@@ -1,6 +1,6 @@
 # SRE Performance tool
 
-Aim to be a simple tool to query and report information from arithmos DB.
+Inspired in old school UNIX commands like sar and iostat, aim to be a simple tool to query and report information from arithmos DB.
 
 ## Usage
 
