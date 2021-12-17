@@ -57,7 +57,7 @@ class NodeReporter():
       for node in self._overal_live_report():
         print("{0:<13} {n[node_name]:<10} {n[hypervisor_cpu_usage_percent]:>6.2f} {n[hypervisor_memory_usage_percent]:>6.2f} {n[num_iops]:>6} {n[io_bandwidth_kBps]:>6.2f} {n[avg_io_latency_msecs]:>6.2f}".format(str(time_now), n=node))
       print("")
-      time.sleep(3)
+      time.sleep(sec)
 
 
 
@@ -66,12 +66,12 @@ if __name__ == "__main__":
     description="Report cluster activity from arithmos",
     epilog='"When you eliminate the impossible, whatever remains, however improbable, must be the truth." Spock.'
   )
-  parser.add_argument('--cpu', '-c', action='store_true')
-  parser.add_argument('sec', type=int, nargs="?", default=0)
-  parser.add_argument('count', type=int, nargs="?", default=1000)
+  parser.add_argument('--nodes', '-n', action='store_true', help="Overal nodes activity report")
+  parser.add_argument('sec', type=int, nargs="?", default=0, help="Interval in seconds")
+  parser.add_argument('count', type=int, nargs="?", default=1000, help="Number of iterations")
   args = parser.parse_args()
   #print(args)
 
-  if args.cpu:
+  if args.nodes:
     node_reporter = NodeReporter()
     node_reporter.print_overal_live_report(args.sec, args.count)
