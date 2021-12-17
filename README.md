@@ -21,6 +21,7 @@ be the truth." Spock.
 
 ## Sample output
 
+```
 nutanix@CVM:10.66.38.41:~/tmp$ ./sre_perf.py -n 2 2
 2021-12-17    Node         CPU%   MEM%   IOPs    B/W    LAT
 12:09:15      Prolix1     91.48  55.24     53   2.20   1.18
@@ -35,4 +36,4 @@ nutanix@CVM:10.66.38.41:~/tmp$ ./sre_perf.py -n 2 2
 12:09:18      Prolix3     90.74  73.87     27   1.37   0.93
 12:09:18      Prolix4     75.27  96.23     19   1.25   1.28
 12:09:18      Prolix5     75.03  93.75     81   2.12   0.20
-
+```
