@@ -21,9 +21,11 @@ import curses
 from stats.arithmos import stats_util
 from util.interfaces.interfaces import NutanixInterfaces
 from stats.arithmos.interface.arithmos_type_pb2 import *
-from serviceability.interface.analytics.arithmos_rpc_client import ArithmosDataProcessing
 from stats.arithmos.interface.arithmos_interface_pb2 import (
-    AgentGetEntitiesArg, MasterGetEntitiesArg)
+  AgentGetEntitiesArg, MasterGetEntitiesArg)
+from serviceability.interface.analytics.arithmos_rpc_client import (
+  ArithmosDataProcessing)
+
 
 class Reporter(object):
   """Reporter base """
@@ -34,17 +36,33 @@ class Reporter(object):
     self.arithmos_client = self.interfaces.arithmos_client
     self.FIELD_NAMES=[]
     
-  def _get_live_stats(self, entity_type, sort_criteria=None, filter_criteria=None,
-                     search_term=None, field_name_list=None):
+  def _get_live_stats(self, entity_type, sort_criteria=None,
+                      filter_criteria=None, search_term=None,
+                      field_name_list=None):
     arithmos_interface = ArithmosDataProcessing()
     ret = arithmos_interface.MasterGetEntitiesStats(
-      entity_type, sort_criteria, filter_criteria, search_term, requested_field_name_list=field_name_list)
+      entity_type, sort_criteria, filter_criteria, search_term,
+      requested_field_name_list=field_name_list)
     if ret:
       response = ret.response
       if response.error == ArithmosErrorProto.kNoError:
         return response
 
   def _get_generic_stats_dict(self, generic_stat_list):
+    """
+    Transform generic_stat_list returned from arithmos into a dictionary.
+    Arithmos returns generic_stats in the form of:
+
+      generic_stat_list {
+        stat_name: "memory_usage_ppm"
+        stat_value: 23030
+      }
+
+    This functions transform this into:
+       { "memory_usage_ppm": 23030 }
+
+    Making it easy to handle by reporters and Ui.
+    """
     ret = {}
     for generic_stat in generic_stat_list:
       ret[generic_stat.stat_name] = generic_stat.stat_value
@@ -82,15 +100,21 @@ class NodeReporter(Reporter):
 
     sort_by = self.sort_conversion[sort]
     all_nodes = []
-    stats = self._get_node_live_stats(field_name_list=field_names, sort_criteria=sort_by)
+    stats = self._get_node_live_stats(field_name_list=field_names,
+                                      sort_criteria=sort_by)
     for node_stat in stats:
       node = {
 	"node_name": node_stat.node_name,
-        "hypervisor_cpu_usage_percent": node_stat.stats.hypervisor_cpu_usage_ppm / 10000,
-        "hypervisor_memory_usage_percent": node_stat.stats.hypervisor_memory_usage_ppm / 10000,
-        "num_iops": node_stat.stats.common_stats.num_iops,
-        "avg_io_latency_msecs": node_stat.stats.common_stats.avg_io_latency_usecs / 1000,
-        "io_bandwidth_kBps": float(node_stat.stats.common_stats.io_bandwidth_kBps /1024)
+        "hypervisor_cpu_usage_percent":
+          node_stat.stats.hypervisor_cpu_usage_ppm / 10000,
+        "hypervisor_memory_usage_percent":
+          node_stat.stats.hypervisor_memory_usage_ppm / 10000,
+        "num_iops":
+          node_stat.stats.common_stats.num_iops,
+        "avg_io_latency_msecs":
+          node_stat.stats.common_stats.avg_io_latency_usecs / 1000,
+        "io_bandwidth_kBps":
+          float(node_stat.stats.common_stats.io_bandwidth_kBps /1024)
       }
 
       # Set value to slice node name. Max is 30 character. This is used for
@@ -136,25 +160,28 @@ class VmReporter(Reporter):
 
     sort_by = self.sort_conversion[sort]
     all_vms = []
-    stats = self._get_vm_live_stats(field_name_list=field_names, sort_criteria=sort_by)
-    #print(stats)
+    stats = self._get_vm_live_stats(field_name_list=field_names,
+                                    sort_criteria=sort_by)
     for vm_stat in stats:
 
-      generic_stats = self._get_generic_stats_dict(vm_stat.stats.generic_stat_list)
+      generic_stats = self._get_generic_stats_dict(
+        vm_stat.stats.generic_stat_list)
       # For VMs without memory_usage_ppm assign 0 instead
       if "memory_usage_ppm" not in generic_stats:
         generic_stats[u"memory_usage_ppm"] = 0
         
       vm = {
 	"vm_name": vm_stat.vm_name,
-        "hypervisor_cpu_usage_percent": vm_stat.stats.hypervisor_cpu_usage_ppm
-        / 10000,
-        "memory_usage_percent": generic_stats["memory_usage_ppm"] /10000,
-        "controller_num_iops": vm_stat.stats.common_stats.controller_num_iops,
+        "hypervisor_cpu_usage_percent":
+          vm_stat.stats.hypervisor_cpu_usage_ppm / 10000,
+        "memory_usage_percent":
+          generic_stats["memory_usage_ppm"] /10000,
+        "controller_num_iops":
+          vm_stat.stats.common_stats.controller_num_iops,
         "controller_io_bandwidth_kBps":
-        vm_stat.stats.common_stats.controller_io_bandwidth_kBps /1024,
+          vm_stat.stats.common_stats.controller_io_bandwidth_kBps /1024,
         "controller_avg_io_latency_msecs":
-        vm_stat.stats.common_stats.controller_avg_io_latency_usecs / 1000
+          vm_stat.stats.common_stats.controller_avg_io_latency_usecs / 1000
       }
 
       # Set value to slice vm name. Max is 30 character. This is used for
@@ -248,7 +275,8 @@ class UiInteractive(Ui):
   def __init__(self):
     Ui.__init__(self)
     self.stdscr = curses.initscr()
-    self.nodes_cpu_pad = curses.newpad(len(self.node_reporter.overal_live_report()) + 3, 80)
+    self.nodes_cpu_pad = curses.newpad(
+      len(self.node_reporter.overal_live_report()) + 3, 80)
     self.nodes_cpu_pad.border()
 
   def open_screen(self, stdscr):
@@ -283,7 +311,8 @@ class UiInteractive(Ui):
       
       # Rendering title
       self.stdscr.addstr(0, 5, title)
-      self.stdscr.addstr(0, width - 12, datetime.datetime.now().strftime("%H:%M:%S"))
+      self.stdscr.addstr(0, width - 12,
+                         datetime.datetime.now().strftime("%H:%M:%S"))
       
       # Turning off attributes for title
       self.stdscr.attroff(curses.color_pair(2))
@@ -309,15 +338,18 @@ class UiInteractive(Ui):
     self.nodes_cpu_pad.attroff(curses.color_pair(2))
     self.nodes_cpu_pad.attroff(curses.A_BOLD)
     
-    self.nodes_cpu_pad.addstr(1, 1, "{0:<20} {1:>5} |{2:50}".format("Name","CPU%","0%         |25%         |50%        |75%     100%|"))
+    self.nodes_cpu_pad.addstr(1, 1, "{0:<20} {1:>5} |{2:50}"
+                              .format("Name","CPU%","0%         |25%         "
+                                      "|50%        |75%     100%|"))
 
     nodes = self.node_reporter.overal_live_report()
     for i in range(0, len(nodes)):
       node = nodes[i]
       rangex = int(0.5 * node["hypervisor_cpu_usage_percent"])
-      self.nodes_cpu_pad.addstr(i + 2, 1, "{0:<20} {1:>5.2f} |{2:50}".format(node["node_name"],
-                                                                          node["hypervisor_cpu_usage_percent"],
-                                                                          "#" * rangex))      
+      self.nodes_cpu_pad.addstr(i + 2, 1, "{0:<20} {1:>5.2f} |{2:50}"
+                                .format(node["node_name"],
+                                        node["hypervisor_cpu_usage_percent"],
+                                        "#" * rangex))      
 
     self.nodes_cpu_pad.noutrefresh(0, 0, y, x, 9, 80)
 
@@ -336,8 +368,8 @@ if __name__ == "__main__":
     parser.add_argument('--sort', '-s',
                         choices=["name", "cpu","mem","iops","bw", "lat"],
                         default="name", help="Sort output")    
-    #parser.add_argument('--test', '-t', action='store_true',
-    #                    help="Place holder for testing new features")    
+    parser.add_argument('--test', '-t', action='store_true',
+                        help="Place holder for testing new features")    
     parser.add_argument('sec', type=int, nargs="?", default=3,
                         help="Interval in seconds")
     parser.add_argument('count', type=int, nargs="?", default=1000,
