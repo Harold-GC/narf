@@ -91,6 +91,29 @@ As for the Reporter classes the relationship between super and sub classes and t
 
 ![narf_uml](https://user-images.githubusercontent.com/52970459/147408692-5d58b9f6-593f-4ebc-b818-305c892a6cca.png)
 
+## Changelog
+
+### Todo
+
+- [ ] Implement data export
+
+
+### In Progress
+
+- [ ] Interactive interface
+  - [x] Node CPU graph
+  - [ ] Add VM list
+  - [ ] Sort VMs
+- [ ] Time range report
+  - [ ] Nodes time range report
+  - [ ] VM time range report
+
+### Done ✓
+
+- [x] CLI sort node and vm report by cpu, mem, etc @harold Dec 26, 2021
+- [x] CLI vm report @harold Dec 25, 2021
+- [x] CLI node report @harold Dec 17, 2021
+
 ## Why narf?
 I had almost decided to change the name from `sre_perf` to `nar` for a while, to make it sound more UNIX like (I thougth about `nstat` but that's already in use), then one day it start to lingering in my head as `narf`, that's when I remembered about _Pinky and The Brain_... the sound "_just say narf_" is some sort of "_jacuna matata_" from Pinky, the reflection of The Brain just before the song is quite cliche but I still believe with a deep meaning.
 
