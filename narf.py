@@ -312,19 +312,27 @@ class UiInteractive(Ui):
 
     self.nodes_cpu_pad.noutrefresh(0, 0, y, x, 9, 80)
 
-    
+
 if __name__ == "__main__":
   try:
     parser = argparse.ArgumentParser(
       description="Report cluster activity",
-      epilog='"When you eliminate the impossible, whatever remains, however improbable, must be the truth." Spock.'
+      epilog='"When you eliminate the impossible, whatever remains,'
+             'however improbable, must be the truth." Spock.'
     )
-    parser.add_argument('--nodes', '-n', action='store_true', help="Overal nodes activity report")
-    parser.add_argument('--uvms', '-v', action='store_true', help="Overal user VMs activity report")
-    parser.add_argument('--sort', '-s', choices=["name", "cpu","mem","iops","bw", "lat"], default="name", help="Sort output")    
-    #parser.add_argument('--test', '-t', action='store_true', help="Place holder for testing new features")    
-    parser.add_argument('sec', type=int, nargs="?", default=3, help="Interval in seconds")
-    parser.add_argument('count', type=int, nargs="?", default=1000, help="Number of iterations")
+    parser.add_argument('--nodes', '-n', action='store_true',
+                        help="Overal nodes activity report")
+    parser.add_argument('--uvms', '-v', action='store_true',
+                        help="Overal user VMs activity report")
+    parser.add_argument('--sort', '-s',
+                        choices=["name", "cpu","mem","iops","bw", "lat"],
+                        default="name", help="Sort output")    
+    #parser.add_argument('--test', '-t', action='store_true',
+    #                    help="Place holder for testing new features")    
+    parser.add_argument('sec', type=int, nargs="?", default=3,
+                        help="Interval in seconds")
+    parser.add_argument('count', type=int, nargs="?", default=1000,
+                        help="Number of iterations")
     args = parser.parse_args()
     #  print(args)
     
