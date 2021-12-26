@@ -18,7 +18,7 @@ import datetime
 import argparse
 import curses
 
-from stats.arithmos import stats_util
+#from stats.arithmos import stats_util
 from util.interfaces.interfaces import NutanixInterfaces
 from stats.arithmos.interface.arithmos_type_pb2 import *
 from stats.arithmos.interface.arithmos_interface_pb2 import (
@@ -301,7 +301,7 @@ class UiInteractive(Ui):
       height, width = stdscr.getmaxyx()
       
       # Declaration of strings
-      title = " SRE Perf "[:width-1]
+      title = " NARF "[:width-1]
 
       self.stdscr.border()
         
@@ -377,19 +377,19 @@ if __name__ == "__main__":
     args = parser.parse_args()
     
     if args.nodes:
-      ui_cli = UiCli()
       try:
+        ui_cli = UiCli()
         ui_cli.nodes_overal_live_report(args.sec, args.count, args.sort)
       except KeyboardInterrupt:
         print("Goodbye")
         exit(0)
       
     elif args.uvms:
-      ui_cli = UiCli()
       try:
+        ui_cli = UiCli()        
         ui_cli.uvms_overal_live_report(args.sec, args.count, args.sort)
       except KeyboardInterrupt:
-        print("Goodbye : )")
+        print("Goodbye")
         exit(0)
       
     elif args.test:
