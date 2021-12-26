@@ -58,7 +58,15 @@ class NodeReporter(Reporter):
     Reporter.__init__(self)
     self._ARITHMOS_ENTITY_PROTO = ArithmosEntityProto.kNode    
     self.max_node_name_width = 0
-
+    self.sort_conversion = {
+      "name": "node_name",
+      "cpu": "-hypervisor_cpu_usage_ppm",
+      "mem": "-hypervisor_memory_usage_ppm",
+      "iops": "-num_iops",
+      "bw": "-io_bandwidth_kBps",
+      "lat" : "-avg_io_latency_usecs"
+    }
+    
   def _get_node_live_stats(self, sort_criteria=None, filter_criteria=None,
                            search_term=None, field_name_list=None):
     response = self._get_live_stats(self._ARITHMOS_ENTITY_PROTO,
@@ -67,13 +75,14 @@ class NodeReporter(Reporter):
     entity_list = response.entity_list.node
     return entity_list
     
-  def overal_live_report(self):
+  def overal_live_report(self, sort="name"):
     field_names=["node_name", "hypervisor_cpu_usage_ppm",
                  "hypervisor_memory_usage_ppm","num_iops",
                  "avg_io_latency_usecs", "io_bandwidth_kBps"]
 
+    sort_by = self.sort_conversion[sort]
     all_nodes = []
-    stats = self._get_node_live_stats(field_name_list=field_names)
+    stats = self._get_node_live_stats(field_name_list=field_names, sort_criteria=sort_by)
     for node_stat in stats:
       node = {
 	"node_name": node_stat.node_name,
@@ -170,13 +179,13 @@ class Ui(object):
 class UiCli(Ui):
   """CLI interface"""
 
-  def nodes_overal_live_report(self, sec, count):
+  def nodes_overal_live_report(self, sec, count, sort="name"):
     i = 0
     while i < count:
       i += 1
       today = datetime.date.today()
       time_now = datetime.datetime.now().strftime("%H:%M:%S")
-      nodes = self.node_reporter.overal_live_report()
+      nodes = self.node_reporter.overal_live_report(sort)
       print("{time:<11} {node:<{width}} {cpu:>6} {mem:>6} {iops:>6} {bw:>6} "
             "{lat:>6}".format(
               time=str(today),
@@ -334,12 +343,11 @@ if __name__ == "__main__":
     parser.add_argument('count', type=int, nargs="?", default=1000,
                         help="Number of iterations")
     args = parser.parse_args()
-    #  print(args)
     
     if args.nodes:
       ui_cli = UiCli()
       try:
-        ui_cli.nodes_overal_live_report(args.sec, args.count)
+        ui_cli.nodes_overal_live_report(args.sec, args.count, args.sort)
       except KeyboardInterrupt:
         print("Goodbye")
         exit(0)
