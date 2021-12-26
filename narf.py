@@ -102,6 +102,14 @@ class VmReporter(Reporter):
     Reporter.__init__(self)
     self.ARITHMOS_ENTITY_PROTO = ArithmosEntityProto.kVM
     self.max_vm_name_width = 0
+    self.sort_conversion = {
+      "name": "vm_name",
+      "cpu": "-hypervisor_cpu_usage_ppm",
+      "mem": "-memory_usage_ppm",
+      "iops": "-controller_num_iops",
+      "bw": "-controller_io_bandwidth_kBps",
+      "lat" : "-controller_avg_io_latency_usecs"
+    }
 
   def _get_vm_live_stats(self, sort_criteria=None, filter_criteria=None,
                            search_term=None, field_name_list=None):
@@ -112,12 +120,14 @@ class VmReporter(Reporter):
     return entity_list
 
     
-  def overal_live_report(self):
+  def overal_live_report(self, sort="name"):
     field_names=["vm_name", "hypervisor_cpu_usage_ppm", "memory_usage_ppm",
                  "controller_num_iops", "controller_io_bandwidth_kBps",
                  "controller_avg_io_latency_usecs"]
+
+    sort_by = self.sort_conversion[sort]
     all_vms = []
-    stats = self._get_vm_live_stats(field_name_list=field_names, sort_criteria="vm_name")
+    stats = self._get_vm_live_stats(field_name_list=field_names, sort_criteria=sort_by)
     #print(stats)
     for vm_stat in stats:
 
@@ -192,13 +202,13 @@ class UiCli(Ui):
       print("")
       time.sleep(sec)
 
-  def uvms_overal_live_report(self, sec, count):
+  def uvms_overal_live_report(self, sec, count, sort="name"):
     i = 0
     while i < count:
       i += 1
       today = datetime.date.today()
       time_now = datetime.datetime.now().strftime("%H:%M:%S")
-      vms = self.vm_reporter.overal_live_report()
+      vms = self.vm_reporter.overal_live_report(sort)
       print("{time:<11} {vm:<{width}} {cpu:>6} {mem:>6} {iops:>6} {bw:>6} "
             "{lat:>6}".format(
               time=str(today),
@@ -304,40 +314,48 @@ class UiInteractive(Ui):
 
     
 if __name__ == "__main__":
-  parser = argparse.ArgumentParser(
-    description="Report cluster activity from arithmos",
-    epilog='"When you eliminate the impossible, whatever remains, however improbable, must be the truth." Spock.'
-  )
-  parser.add_argument('--nodes', '-n', action='store_true', help="Overal nodes activity report")
-  parser.add_argument('--uvms', '-v', action='store_true', help="Overal user VMs activity report")
-  parser.add_argument('--test', '-t', action='store_true', help="Place holder for testing new features")    
-  parser.add_argument('sec', type=int, nargs="?", default=3, help="Interval in seconds")
-  parser.add_argument('count', type=int, nargs="?", default=1000, help="Number of iterations")
-  args = parser.parse_args()
-#  print(args)
-
-  if args.nodes:
-    ui_cli = UiCli()
-    try:
-      ui_cli.nodes_overal_live_report(args.sec, args.count)
-    except KeyboardInterrupt:
-      print("Goodbye")
-      exit(0)
+  try:
+    parser = argparse.ArgumentParser(
+      description="Report cluster activity",
+      epilog='"When you eliminate the impossible, whatever remains, however improbable, must be the truth." Spock.'
+    )
+    parser.add_argument('--nodes', '-n', action='store_true', help="Overal nodes activity report")
+    parser.add_argument('--uvms', '-v', action='store_true', help="Overal user VMs activity report")
+    parser.add_argument('--sort', '-s', choices=["name", "cpu","mem","iops","bw", "lat"], default="name", help="Sort output")    
+    #parser.add_argument('--test', '-t', action='store_true', help="Place holder for testing new features")    
+    parser.add_argument('sec', type=int, nargs="?", default=3, help="Interval in seconds")
+    parser.add_argument('count', type=int, nargs="?", default=1000, help="Number of iterations")
+    args = parser.parse_args()
+    #  print(args)
+    
+    if args.nodes:
+      ui_cli = UiCli()
+      try:
+        ui_cli.nodes_overal_live_report(args.sec, args.count)
+      except KeyboardInterrupt:
+        print("Goodbye")
+        exit(0)
       
-  elif args.uvms:
-    ui_cli = UiCli()
-    try:
-      ui_cli.uvms_overal_live_report(args.sec, args.count)
-    except KeyboardInterrupt:
-      print("Goodbye : )")
-      exit(0)
+    elif args.uvms:
+      ui_cli = UiCli()
+      try:
+        ui_cli.uvms_overal_live_report(args.sec, args.count, args.sort)
+      except KeyboardInterrupt:
+        print("Goodbye : )")
+        exit(0)
       
-  elif args.test:
+    elif args.test:
       print("==== TESTING ====")
       #vm_reporter = VmReporter()
       #vm_reporter.test_data_processing()
       
-  else:
-    ui_interactive = UiInteractive()
-    curses.wrapper(ui_interactive.open_screen)
+    else:
+      ui_interactive = UiInteractive()
+      curses.wrapper(ui_interactive.open_screen)
 
+  except IOError:
+    # Python flushes standard streams on exit; redirect remaining output
+    # to devnull to avoid another BrokenPipeError at shutdown
+    devnull = os.open(os.devnull, os.O_WRONLY)
+    os.dup2(devnull, sys.stdout.fileno())
+    sys.exit(1)  # Python exits with error code 1 on EPIPE
