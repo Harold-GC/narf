@@ -93,7 +93,7 @@ class NodeReporter(Reporter):
     entity_list = response.entity_list.node
     return entity_list
     
-  def overal_live_report(self, sort="name"):
+  def overall_live_report(self, sort="name"):
     field_names=["node_name", "hypervisor_cpu_usage_ppm",
                  "hypervisor_memory_usage_ppm","num_iops",
                  "avg_io_latency_usecs", "io_bandwidth_kBps"]
@@ -153,7 +153,7 @@ class VmReporter(Reporter):
     return entity_list
 
     
-  def overal_live_report(self, sort="name"):
+  def overall_live_report(self, sort="name"):
     field_names=["vm_name", "hypervisor_cpu_usage_ppm", "memory_usage_ppm",
                  "controller_num_iops", "controller_io_bandwidth_kBps",
                  "controller_avg_io_latency_usecs"]
@@ -206,13 +206,13 @@ class Ui(object):
 class UiCli(Ui):
   """CLI interface"""
 
-  def nodes_overal_live_report(self, sec, count, sort="name"):
+  def nodes_overall_live_report(self, sec, count, sort="name"):
     i = 0
     while i < count:
       i += 1
       today = datetime.date.today()
       time_now = datetime.datetime.now().strftime("%H:%M:%S")
-      nodes = self.node_reporter.overal_live_report(sort)
+      nodes = self.node_reporter.overall_live_report(sort)
       print("{time:<11} {node:<{width}} {cpu:>6} {mem:>6} {iops:>6} {bw:>6} "
             "{lat:>6}".format(
               time=str(today),
@@ -238,13 +238,13 @@ class UiCli(Ui):
       print("")
       time.sleep(sec)
 
-  def uvms_overal_live_report(self, sec, count, sort="name"):
+  def uvms_overall_live_report(self, sec, count, sort="name"):
     i = 0
     while i < count:
       i += 1
       today = datetime.date.today()
       time_now = datetime.datetime.now().strftime("%H:%M:%S")
-      vms = self.vm_reporter.overal_live_report(sort)
+      vms = self.vm_reporter.overall_live_report(sort)
       print("{time:<11} {vm:<{width}} {cpu:>6} {mem:>6} {iops:>6} {bw:>6} "
             "{lat:>6}".format(
               time=str(today),
@@ -272,67 +272,95 @@ class UiCli(Ui):
       
 class UiInteractive(Ui):
   """Interactive interface"""
+  
   def __init__(self):
+    """
+    TODO:
+      + Find a better way to get Y for pads, the use of overall_live_report()
+        is an unnecessary call to arithmos.
+    """
     Ui.__init__(self)
     self.stdscr = curses.initscr()
     self.nodes_cpu_pad = curses.newpad(
-      len(self.node_reporter.overal_live_report()) + 3, 80)
+      len(self.node_reporter.overall_live_report()) + 3, 80)
     self.nodes_cpu_pad.border()
 
-  def open_screen(self, stdscr):
-    self.stdscr.clear()
-    self.stdscr.nodelay(1)
-    key = 0
+    self.vm_overall_pad = curses.newpad(
+      len(self.vm_reporter.overall_live_report()) + 3, 80)
+    self.vm_overall_pad.border()
+    
+    self.initialize_colors()
+    self.initialize_strings()
 
-    # Set invisible cursor
-    curses.curs_set(0)
+    self.height = 0
+    self.width = 0
+    
+  def initialize_colors(self):
+    # Color pair constants
+    self.RED = 1
+    self.GREEN = 2
+    self.YELLOW = 3
+    self.BLUE = 4
+    self.MAGENTA = 5
+    self.CYAN = 6
+    self.WHITE_BLACK = 7
     
     # Start colors in curses
     curses.start_color()
     curses.use_default_colors()
-    curses.init_pair(1, curses.COLOR_CYAN, -1)
-    curses.init_pair(2, curses.COLOR_RED, -1)
-    curses.init_pair(3, curses.COLOR_BLACK, curses.COLOR_WHITE)    
+    curses.init_pair(self.RED, curses.COLOR_RED, -1)    
+    curses.init_pair(self.GREEN, curses.COLOR_GREEN, -1)
+    curses.init_pair(self.YELLOW, curses.COLOR_YELLOW, -1)
+    curses.init_pair(self.BLUE, curses.COLOR_BLUE, -1)
+    curses.init_pair(self.MAGENTA, curses.COLOR_MAGENTA, -1)
+    curses.init_pair(self.CYAN, curses.COLOR_CYAN, -1)    
+    curses.init_pair(self.WHITE_BLACK, curses.COLOR_WHITE, curses.COLOR_BLACK)    
+
+  def initialize_strings(self):
+    self.title = " NARF "
+
+  def render_header(self):
+    # Turning on attributes for title
+    self.stdscr.attron(curses.color_pair(self.RED))
+    self.stdscr.attron(curses.A_BOLD)
     
-    while (key != ord('q')):
-    #while(True):
-      # Initialization
-      self.stdscr.clear()
-      height, width = stdscr.getmaxyx()
-      
-      # Declaration of strings
-      title = " NARF "[:width-1]
+    # Rendering title
+    self.stdscr.addstr(0, 5, self.title)
+    self.stdscr.addstr(0, self.width - 12,
+                       datetime.datetime.now().strftime("%H:%M:%S"))
+    
+    # Turning off attributes for title
+    self.stdscr.attroff(curses.color_pair(2))
+    self.stdscr.attroff(curses.A_BOLD)
 
-      self.stdscr.border()
-        
-      # Turning on attributes for title
-      self.stdscr.attron(curses.color_pair(2))
-      self.stdscr.attron(curses.A_BOLD)
-      
-      # Rendering title
-      self.stdscr.addstr(0, 5, title)
-      self.stdscr.addstr(0, width - 12,
-                         datetime.datetime.now().strftime("%H:%M:%S"))
-      
-      # Turning off attributes for title
-      self.stdscr.attroff(curses.color_pair(2))
-      self.stdscr.attroff(curses.A_BOLD)
+  def safe_noautorefresh(self, pad,
+                         pad_min_y, pad_min_x,
+                         screen_y, screen_x,
+                         pad_desired_height, pad_desired_width):
+    """
+    It safely display a pad without going beyond window boundaries.
+    Avoid to crash if window is resized.
+    TODO: 
+      + For the time being it assume the pad is displayed from 0, 0
+        pad position. This means it will always receive pad_min_y
+        and pad_min_x with 0 value. Other values may make this 
+        function to crash.
+    """
+    main_screen_max_absolute_y = screen_y + pad_desired_height
+    main_screen_max_absolute_x = screen_x + pad_desired_width
 
-      self.display_nodes_cpu_pad(2,1)
-      
-      # Refresh the screen
-      self.stdscr.noutrefresh()
+    if self.height < main_screen_max_absolute_y:
+      main_screen_max_absolute_y = self.height - 2
 
-      # Stage all updates
-      curses.doupdate()
-      
-      # Wait for next input
-      time.sleep(3)
-      key = self.stdscr.getch()
+    if self.width < main_screen_max_absolute_x:
+      main_screen_max_absolute_x = self.width - 2
 
-  def display_nodes_cpu_pad(self, y, x):
+    pad.noutrefresh(pad_min_y, pad_min_x,
+                    screen_y, screen_x,
+                    main_screen_max_absolute_y, main_screen_max_absolute_x)
+      
+  def render_nodes_cpu_pad(self, y, x):
     self.stdscr.noutrefresh()
-
     self.nodes_cpu_pad.attron(curses.A_BOLD)
     self.nodes_cpu_pad.addstr(0, 3, " Nodes CPU ")
     self.nodes_cpu_pad.attroff(curses.color_pair(2))
@@ -342,16 +370,81 @@ class UiInteractive(Ui):
                               .format("Name","CPU%","0%         |25%         "
                                       "|50%        |75%     100%|"))
 
-    nodes = self.node_reporter.overal_live_report()
+    nodes = self.node_reporter.overall_live_report()
     for i in range(0, len(nodes)):
       node = nodes[i]
       rangex = int(0.5 * node["hypervisor_cpu_usage_percent"])
+      # check this: title = " NARF "[:self.width-1] for trim string size.
       self.nodes_cpu_pad.addstr(i + 2, 1, "{0:<20} {1:>5.2f} |{2:50}"
                                 .format(node["node_name"],
                                         node["hypervisor_cpu_usage_percent"],
                                         "#" * rangex))      
 
-    self.nodes_cpu_pad.noutrefresh(0, 0, y, x, 9, 80)
+    self.safe_noautorefresh(self.nodes_cpu_pad, 0, 0, y, x, 9, 80)
+
+  def render_vm_pad(self, y, x):
+    self.stdscr.noutrefresh()
+    self.vm_overall_pad.attron(curses.A_BOLD)
+    self.vm_overall_pad.addstr(0, 3, " Overall VMs ")
+    self.vm_overall_pad.attroff(curses.color_pair(2))
+
+    self.vm_overall_pad.addstr(1, 1,
+            "{vm:<{width}} {cpu:>6} {mem:>6} {iops:>6} {bw:>6} "
+            "{lat:>6}".format(
+              vm="VM Name",
+              cpu="CPU%",
+              mem="MEM%",
+              iops="IOPs",
+              bw = "B/W",
+              lat="LAT",
+              width=self.vm_reporter.max_vm_name_width))
+
+    self.vm_overall_pad.attroff(curses.A_BOLD)
+    
+    
+    sort = "cpu"
+    vms = self.vm_reporter.overall_live_report(sort)
+    for i in range(0, len(vms)):
+      vm = vms[i]
+      self.vm_overall_pad.addstr(i + 2, 1, "{v[vm_name]:<{width}} "
+                                 "{v[hypervisor_cpu_usage_percent]:>6.2f} "
+                                 "{v[memory_usage_percent]:>6.2f} "
+                                 "{v[controller_num_iops]:>6} "
+                                 "{v[controller_io_bandwidth_kBps]:>6.2f} "
+                                 "{v[controller_avg_io_latency_msecs]:>6.2f} "
+                                 .format(v=vm, width=self.vm_reporter.max_vm_name_width))
+
+    pad_size_y, pad_size_x =self.vm_overall_pad.getmaxyx()
+    self.safe_noautorefresh(self.vm_overall_pad, 0, 0, y, x, pad_size_y, 80)    
+          
+  def render_main_screen(self, stdscr):
+    self.stdscr.clear()
+    self.stdscr.nodelay(1)
+    key = 0
+
+    # Set invisible cursor
+    curses.curs_set(0)
+    
+    while (key != ord('q')):
+      # Initialization
+      self.stdscr.clear()
+      self.height, self.width = stdscr.getmaxyx()
+      self.stdscr.border()
+
+      self.render_header()
+
+      self.render_nodes_cpu_pad(2,1)
+      self.render_vm_pad(10,1)
+      
+      # Refresh the screen
+      self.stdscr.noutrefresh()
+
+      # Stage all updates
+      curses.doupdate()
+      
+      # Wait for next input
+      time.sleep(1)
+      key = self.stdscr.getch()
 
 
 if __name__ == "__main__":
@@ -362,9 +455,9 @@ if __name__ == "__main__":
              'however improbable, must be the truth." Spock.'
     )
     parser.add_argument('--nodes', '-n', action='store_true',
-                        help="Overal nodes activity report")
+                        help="Overall nodes activity report")
     parser.add_argument('--uvms', '-v', action='store_true',
-                        help="Overal user VMs activity report")
+                        help="Overall user VMs activity report")
     parser.add_argument('--sort', '-s',
                         choices=["name", "cpu","mem","iops","bw", "lat"],
                         default="name", help="Sort output")    
@@ -379,7 +472,7 @@ if __name__ == "__main__":
     if args.nodes:
       try:
         ui_cli = UiCli()
-        ui_cli.nodes_overal_live_report(args.sec, args.count, args.sort)
+        ui_cli.nodes_overall_live_report(args.sec, args.count, args.sort)
       except KeyboardInterrupt:
         print("Goodbye")
         exit(0)
@@ -387,7 +480,7 @@ if __name__ == "__main__":
     elif args.uvms:
       try:
         ui_cli = UiCli()        
-        ui_cli.uvms_overal_live_report(args.sec, args.count, args.sort)
+        ui_cli.uvms_overall_live_report(args.sec, args.count, args.sort)
       except KeyboardInterrupt:
         print("Goodbye")
         exit(0)
@@ -399,11 +492,12 @@ if __name__ == "__main__":
       
     else:
       ui_interactive = UiInteractive()
-      curses.wrapper(ui_interactive.open_screen)
+      curses.wrapper(ui_interactive.render_main_screen)
 
   except IOError:
     # Python flushes standard streams on exit; redirect remaining output
     # to devnull to avoid another BrokenPipeError at shutdown
+    # see https://docs.python.org/3/library/signal.html#note-on-sigpipe
     devnull = os.open(os.devnull, os.O_WRONLY)
     os.dup2(devnull, sys.stdout.fileno())
     sys.exit(1)  # Python exits with error code 1 on EPIPE
