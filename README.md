@@ -95,16 +95,16 @@ As for the Reporter classes the relationship between super and sub classes and t
 
 ### Todo
 
-- [ ] Implement data export
+- [ ] Implement data export - to have files that can be imported in graphical tool like Graphana
 
 
 ### In Progress
 
-- [ ] Interactive interface
+- [ ] Interactive interface - top like interface
   - [x] Node CPU graph
   - [ ] Add VM list
   - [ ] Sort VMs
-- [ ] Time range report
+- [ ] Time range report - to be able to query historical data
   - [ ] Nodes time range report
   - [ ] VM time range report
 
