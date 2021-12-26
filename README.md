@@ -106,7 +106,7 @@ As for the Reporter classes the relationship between super and sub classes and t
 
 - [ ] Interactive interface - top like interface
   - [x] Node CPU graph
-  - [ ] Add VM list
+  - [X] Add VM list @harold Dec 27, 2021
   - [ ] Sort VMs
 - [ ] Time range report - to be able to query historical data
   - [ ] Nodes time range report
