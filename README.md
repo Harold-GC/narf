@@ -81,6 +81,10 @@ nutanix@NTNX-14SM15510002-A-CVM:10.10.10.10:~/tmp$ ./narf.py -vs cpu 3 | head -3
 nutanix@NTNX-14SM15510002-A-CVM:10.10.10.10:~/tmp$ 
 ```
 
+### Interactive mode (top like interface)
+
+<img src="https://user-images.githubusercontent.com/52970459/147422400-2ced603b-d3b1-49ed-a6dd-4068668d2308.jpg" alt="narf_interactive" style="width: 550px;">
+
 ## Design
 
 Reporter classes abstract the datasource from the UI classes. Reporter classes are in charge of collect stats from Arithmos and pass the information to UI classes in form of simple native data structures (Python arrays and dictionaries). In this way, if the datasource is changed later (for example from Arithmos to IDF) there will be no needed to modify the Ui classes, it will only be needed to change the Reporter classes.
