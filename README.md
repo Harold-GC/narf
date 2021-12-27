@@ -100,7 +100,7 @@ Splitting tasks/features according to each interface, some taks intertwine betwe
 
 ### Todo
 - CLI interface - Eveything for inLine outputs
-  - [ ] Zort
+  - [ ] Remove VMs in power state off.
 - Interactive interface - top like interface
   - [ ] VM specific report - implement a pad with VM cpu/rdy/mem/controller iops, etc, plus vDisks.
 - Data exporter - Time range report, to be able to query historical data and export to files.
