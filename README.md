@@ -114,6 +114,7 @@ Splitting tasks/features according to each interface, some taks intertwine betwe
 - CLI interface - Eveything for inLine outputs
   - [ ] Zort
 - Interactive interface - top like interface
+  - [ ] Add CPU ready time to overall VM report.
   - [ ] Sort VMs
 - Data exporter - Time range report, to be able to query historical data and export to files.
   - [ ] Zort
@@ -124,8 +125,8 @@ Splitting tasks/features according to each interface, some taks intertwine betwe
   - [x] CLI vm report @harold Dec 25, 2021
   - [x] CLI node report @harold Dec 17, 2021
 - Interactive interface - top like interface
-  - [x] Node CPU graph @harold Dec 19, 2021
   - [X] Add VM list @harold Dec 27, 2021
+  - [x] Node CPU graph @harold Dec 19, 2021
 - Data exporter - Time range report, to be able to query historical data and export to files.
   - [x] Zort
 
