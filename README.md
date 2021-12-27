@@ -132,7 +132,7 @@ Splitting tasks/features according to each interface, some taks intertwine betwe
 ## Why narf?
 I had almost decided to change the name from `sre_perf` to `nar` for a while, to make it sound more UNIX like (I thougth about `nstat` but that's already in use), then one day it start lingering in my head as `narf`, that's when I remembered about _Pinky and The Brain_... the sound "_just say narf_" is some sort of "_jacuna matata_" from Pinky, the reflection of The Brain just before the song is quite cliche but I still believe with a deep meaning.
 
-Initially the letter ***F*** had no meaning, and it was there just to make the command sounds fun (fun things are more memorable, more easy to remember), then a friend suggested ***F***acilitator and I found it quite convenient.
+Initially the letter ***F*** had no meaning, and it was there just to make the command sounds fun (fun things are memorable, more easy to remember), then a friend suggested ***F***acilitator and I found it quite convenient.
 
 [![narf](https://user-images.githubusercontent.com/52970459/147395459-03f77395-12cb-429a-a7fa-0b773353e7b6.jpg)](https://www.youtube.com/watch?v=lZBQ0tXA-QM)
 
