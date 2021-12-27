@@ -185,9 +185,11 @@ class VmReporter(Reporter):
                  "controller_avg_io_latency_usecs"]
 
     sort_by = self.sort_conversion[sort]
+    filter_by= "power_state==on"
     all_vms = []
     stats = self._get_vm_live_stats(field_name_list=field_names,
-                                    sort_criteria=sort_by)
+                                    sort_criteria=sort_by,
+                                    filter_criteria=filter_by)
     for vm_stat in stats:
 
       # Convert stats from Arithmos generic stat format into a dictionary.
