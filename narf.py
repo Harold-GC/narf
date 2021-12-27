@@ -68,6 +68,23 @@ class Reporter(object):
       ret[generic_stat.stat_name] = generic_stat.stat_value
     return ret
 
+  def _zeroed_missing_stats(self, stats, desired_stat_list):
+    """
+    If an entity is missing an stat in the returned data from arithmos
+    then it's necessary to fill the missing information to fill the
+    fields when it's displayed by the Ui.
+
+    This function takes an actual list of stats and a list of desired
+    stats. If a stat in the desired list is missing from the stat list
+    then it add it with a value of 0 and returns a new list.
+
+    TODO: There may be a better way to do this.
+    """
+    for desired_stat in desired_stat_list:
+      if desired_stat not in stats:
+        stats[desired_stat] = 0
+    return stats
+
   
 class NodeReporter(Reporter):
   """Reports for Nodes"""
@@ -154,8 +171,11 @@ class VmReporter(Reporter):
 
     
   def overall_live_report(self, sort="name"):
-    field_names=["vm_name", "hypervisor_cpu_usage_ppm", "memory_usage_ppm",
-                 "controller_num_iops", "controller_io_bandwidth_kBps",
+    field_names=["vm_name",
+                 "hypervisor_cpu_usage_ppm",
+                 "hypervisor.cpu_ready_time_ppm",
+                 "memory_usage_ppm","controller_num_iops",
+                 "controller_io_bandwidth_kBps",
                  "controller_avg_io_latency_usecs"]
 
     sort_by = self.sort_conversion[sort]
@@ -164,16 +184,40 @@ class VmReporter(Reporter):
                                     sort_criteria=sort_by)
     for vm_stat in stats:
 
+      # Convert stats from Arithmos generic stat format into a dictionary.
+      #
+      # GENERIC STAT FORMAT IS LIKE:
+      # generic_stat_list {
+      #   stat_name: "memory_usage_ppm"
+      #   stat_value: 23030
+      # }
+      #
+      # IT IS TRANSFORMED INTO THIS:
+      #  { "memory_usage_ppm": 23030 }
       generic_stats = self._get_generic_stats_dict(
         vm_stat.stats.generic_stat_list)
-      # For VMs without memory_usage_ppm assign 0 instead
-      if "memory_usage_ppm" not in generic_stats:
-        generic_stats[u"memory_usage_ppm"] = 0
-        
+
+      # List of stats that arithmos return in generic stats format value.
+      # It's necessary to explictly know which stats Arithmos return in
+      # generic stat format.
+      generic_stat_names = ["memory_usage_ppm",
+                            "hypervisor.cpu_ready_time_ppm"]
+
+      # Lastly, it's necessary to fill with zeros the missing stats.
+      generic_stats = self._zeroed_missing_stats(generic_stats,
+                                                 generic_stat_names)
+
+      # I don't know which other stats might be missing from the data returned
+      # from Arithmos, so more workarounds like previous one may be needed
+      # in the future.
+      # Function _zeroed_missing_stats() should work for most cases.
+
       vm = {
 	"vm_name": vm_stat.vm_name,
         "hypervisor_cpu_usage_percent":
           vm_stat.stats.hypervisor_cpu_usage_ppm / 10000,
+        "hypervisor.cpu_ready_time_ppm":
+          generic_stats["hypervisor.cpu_ready_time_ppm"] / 10000,
         "memory_usage_percent":
           generic_stats["memory_usage_ppm"] /10000,
         "controller_num_iops":
