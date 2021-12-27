@@ -2,7 +2,7 @@
 
 NARF stands for **N**utanix **A**ctivity **R**eport **F**acilitator.
 
-Inspired in old school UNIX commands like `sar`, `iostat` and `top`, aim to be a simple tool to query and report information from arithmos DB in Nutanix clusters. Later will add a feature to export the data into files that can be uploaded to a graphical tool like Grafana.
+Inspired in old school UNIX commands like `sar`, `iostat` and `top`, aim to be a simple tool to query and report information from Nutanix clusters performance datasource (arithmos DB). Later will add a feature to export the data into files that can be uploaded to a graphical tool like Grafana.
 
 ## Usage
 ```
