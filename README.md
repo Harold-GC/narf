@@ -94,13 +94,18 @@ As for the Reporter classes the relationship between super and sub classes and t
 
 ![narf_uml](https://user-images.githubusercontent.com/52970459/147408692-5d58b9f6-593f-4ebc-b818-305c892a6cca.png)
 
+## Limitations
+
+ - It only displays Power ON VMs. This is by design, assuming power OFF VMs has no impact on cluster performance.
+ - Display a maximum of 252 VMs. This is the max number of entities that Arithmos query returns.
+
 ## Changelog
 
 Splitting tasks/features according to each interface, some taks intertwine between interfaces but it should be fine, I'm putting them where are more relevant.
 
 ### Todo
 - CLI interface - Eveything for inLine outputs
-  - [ ] Remove VMs in power state off.
+  - [ ] Zort
 - Interactive interface - top like interface
   - [ ] VM specific report - implement a pad with VM cpu/rdy/mem/controller iops, etc, plus vDisks.
 - Data exporter - Time range report, to be able to query historical data and export to files.
@@ -120,6 +125,7 @@ Splitting tasks/features according to each interface, some taks intertwine betwe
 
 ### Done ✓
 - CLI interface - Eveything for inLine outputs
+  - [X] Display only running VMs.
   - [x] CLI sort node and vm report by cpu, mem, etc @harold Dec 26, 2021
   - [x] CLI vm report @harold Dec 25, 2021
   - [x] CLI node report @harold Dec 17, 2021
