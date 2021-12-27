@@ -29,7 +29,7 @@ be the truth." Spock.
 ## Sample outputs
 ### Node report
 ```
-nutanix@CVM:10.10.10.10:~/tmp$ ./narf.py -n 2 2
+nutanix@NTNX-CVM:10.66.38.141:~$ ./narf.py -n 2 2
 2021-12-17    Node         CPU%   MEM%   IOPs    B/W    LAT
 12:09:15      Prolix1     91.48  55.24     53   2.20   1.18
 12:09:15      Prolix2     77.12  83.58     71   2.60   0.53
@@ -47,38 +47,37 @@ nutanix@CVM:10.10.10.10:~/tmp$ ./narf.py -n 2 2
 
 ### VM Report sorted by CPU
 ```
-nutanix@NTNX-14SM15510002-A-CVM:10.10.10.10:~/tmp$ ./narf.py -vs cpu 3 | head -30
-2021-12-26  VM Name                          CPU%   MEM%   IOPs    B/W    LAT
-02:45:07    albert-W2019                    81.39   0.00      0   0.00   0.00 
-02:45:07    NTNX-xxxxxxxxxxxxx-C-CVM         65.34  64.40      0   0.00   0.00 
-02:45:07    NTNX-xxxxxxxxxxxxx-A-CVM         63.25  67.97      0   0.00   0.00 
-02:45:07    NTNX-xxxxxxxxxxxxx-D-CVM         60.40  68.05      0   0.00   0.00 
-02:45:07    prolix-pc                       44.61  77.60    198   2.05   4.52 
-02:45:07    branislav-w10pro                43.34  35.07    306  19.71   1.78 
-02:45:07    NTNX-Prolix4-CVM                40.18  62.94      0   0.00   0.00 
-02:45:07    NTNX-Observer                   36.36  64.62     22   7.01   0.55 
-02:45:07    NTNX-Prolix2-CVM                34.61  66.99      0   0.00   0.00 
-02:45:07    NTNX-Omega-2                    31.21  80.29     29   0.20   3.91 
-02:45:07    Daniil_rhtest                   30.33  65.91      0   0.00   1.27 
-02:45:07    harold-ocp-cp-2                 27.75  64.40     30   0.41   2.13 
-02:45:07    NTNX-Omega-1                    26.90  63.28     24   0.16   5.85 
-02:45:07    infra-nllinux                   25.38   9.93      2   0.01   1.78 
-02:45:07    harold-ocp-cp-3                 24.50  55.93     30   0.44   2.22 
-02:45:07    harold-ocp-cp-1                 24.24  45.82     30   0.44   2.16 
-02:45:07    Asterix_and_Obelix_witness      21.50  68.20     15   0.10   2.78 
-02:45:07    NTNX-Omega-3                    20.84  64.91     30   0.22   3.19 
-02:45:07    NKSQL Server 2014 VM            19.58  39.26    459   6.50   1.32 
-02:45:07    harold-ocp-app-2                19.46  92.10    928  79.80   1.90 
-02:45:07    pavel-vbr                       16.66  72.96      3   0.04   1.78 
-02:45:07    harold-ocp-app-1                14.93  69.41      2   0.03   3.21 
-02:45:07    Janagan_PostgreSQLVM1           14.47  93.35      0   0.00   2.64 
-02:45:07    JanaganSQL2019                  12.51  44.86      1   0.01   1.70 
-02:45:07    sergei_era_01                    9.78  17.96      0   0.01   1.39 
-02:45:07    NTNX-FA-FilesAnalyticsProlix     7.43  60.40      3   0.04   2.23 
-02:45:07    Janagan_MYSQL_ERA                7.20  83.56      0   0.00   1.95 
-02:45:07    infra-dc01                       7.17  28.53     19   0.24   1.30 
-02:45:07    TD-Win2k12-CV                    6.78  48.12      8   0.10   1.77 
-nutanix@NTNX-14SM15510002-A-CVM:10.10.10.10:~/tmp$ 
+nutanix@NTNX-CVM:10.66.38.141:~$ ./narf.py -vs cpu 3 | head -30
+2021-12-27  VM Name                          CPU%   MEM%   IOPs    B/W    LAT
+18:41:58    prolix-pc                       78.23  43.32    418  16.23   3.60 
+18:41:58    W2019                           77.06   6.63      0   0.00   0.00 
+18:41:58    NTNX-xxxxxxxxxxxx-C-CVM         67.81  64.94      0   0.00   0.00 
+18:41:58    NTNX-Prolix2-CVM                53.68  60.97      0   0.00   0.00 
+18:41:58    NTNX-Omega-1                    41.06  50.93     28   0.57   5.13 
+18:41:58    NTNX-xxxxxxxxxxxx-D-CVM         35.42  65.32      0   0.00   0.00 
+18:41:58    NTNX-xxxxxxxxxxxx-A-CVM         30.27  65.18      0   0.00   0.00 
+18:41:58    NTNX-Omega-3                    29.18  53.02     28   0.20   3.63 
+18:41:58    Asterix_and_Obelix_witness      22.91  51.37     20   0.12   2.85 
+18:41:58    NTNX-Prolix4-CVM                19.43  63.87      0   0.00   0.00 
+18:41:58    NTNX-Omega-2                    19.17  47.22     28   0.19   3.16 
+18:41:58    harold-ocp-cp-2                 18.27  52.03     41   0.41   2.17 
+18:41:58    harold-ocp-cp-3                 17.67  47.79     43   0.45   2.17 
+18:41:58    harold-ocp-cp-1                 16.61  41.00     65   1.10   4.27 
+18:41:58    NTNX-Observer                   15.92  99.76   1151  33.27   2.00 
+18:41:58    windows_2016_clone.             14.19  30.96      5   0.03   1.76 
+18:41:58    harold-ocp-app-2                13.79  55.20      2   0.05   2.20 
+18:41:58    NTNX-FA-FilesAnalyticsProlix     9.10  50.16      3   0.04   2.32 
+18:41:58    PostgreSQLVM1.                   8.58  88.97      0   0.00   2.98 
+18:41:58    SQL2019.                         6.06  25.80      1   0.01   1.50 
+18:41:58    rhtest.                          5.91  53.35      0   0.00   1.60 
+18:41:58    ERA.                             5.42  13.73      0   0.01   1.63 
+18:41:58    W2019-UEFI                       5.17   0.00      0   0.00   0.00 
+18:41:58    NK-Era-new                       5.10   9.93      0   0.00   2.05 
+18:41:58    TD-Win2k12-CV                    4.36  23.62      8   0.07   1.75 
+18:41:58    Xendesktop                       4.04  19.40      3   0.03   1.44 
+18:41:58    vbr                              3.87  47.28      1   0.02   1.59 
+18:41:58    Win2019                          3.83  24.35      1   0.01   1.67 
+18:41:58    karbon-nh-karbon-099282-k8s-ma   3.70  19.91      0   0.02   2.00 
 ```
 
 ### Interactive mode (top like interface)
