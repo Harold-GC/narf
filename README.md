@@ -1,6 +1,6 @@
 # NARF
 
-NARF stands for **N**utanix **A**ctivity **R**eport (the F has no meaning, just makes the command sounds fun).
+NARF stands for **N**utanix **A**ctivity **R**eport **F**acilitator.
 
 Inspired in old school UNIX commands like `sar`, `iostat` and `top`, aim to be a simple tool to query and report information from arithmos DB in Nutanix clusters. Later will add a feature to export the data into files that can be uploaded to a graphical tool like Grafana.
 
@@ -87,39 +87,52 @@ nutanix@NTNX-14SM15510002-A-CVM:10.10.10.10:~/tmp$
 
 ## Design
 
-Reporter classes abstract the datasource from the UI classes. Reporter classes are in charge of collect stats from Arithmos and pass the information to UI classes in form of simple native data structures (Python arrays and dictionaries). In this way, if the datasource is changed later (for example from Arithmos to IDF) there will be no needed to modify the Ui classes, it will only be needed to change the Reporter classes.
+Reporter classes abstract the datasource from the UI classes. Reporter classes are in charge of collect stats from the cluster datasource (Arithmos) and pass the information to UI classes in form of simple native data structures (Python arrays and dictionaries). In this way, if the datasource is changed later (for example from Arithmos to IDF) there will be no need to modify the Ui classes, it will only be needed to change the Reporter classes.
 
 The ```Ui``` super class will hold the attributes that links to all reporters but will not implement any method for presenting information (it's an interface), this assume every UI subclass will need every reporter. Ui subclasses will implement neccesary methods to display information accordingly making use of reporters defined in the super class.
 
-As for the Reporter classes the relationship between super and sub classes and the methods they need to implement is slightly more complicated because the way data is returned from Arithmos. Wherever possible one should prefer to implement a method in the superclass; breakdown a method so that the generic part of the code is moved to the super class while leaving the specifics to entity reporter is a valid resource, as seen in the method ```_get_live_stats()``` in super class ```Reporter``` which is used by ```_get_node_live_stats()``` in the ```NodeReporter``` and ```_get_vm_live_stats()``` in the ```VmReporter``` sub classes (This is aligned with the principles of avoiding code duplication and easy the maintenance). More reporters will be needed as more reports for different entities are added, e.g ```VdiskReporter```.
+As for the Reporter classes the relationship between super and sub classes and the methods they need to implement is slightly more complicated because the way data is returned from Arithmos. Wherever possible one should prefer to implement a method in the superclass; breakdown a method so that the generic part of the code is moved to the super class while leaving the specifics to entity reporter is a valid resource, as seen in the method ```_get_live_stats()``` in super class ```Reporter``` which is used by ```_get_node_live_stats()``` in the ```NodeReporter``` and ```_get_vm_live_stats()``` in the ```VmReporter``` sub classes (This is aligned with the principles of avoiding code duplication and procuring easy maintenance). More reporters will be needed as more reports for different entities are added, e.g ```VdiskReporter```.
 
 ![narf_uml](https://user-images.githubusercontent.com/52970459/147408692-5d58b9f6-593f-4ebc-b818-305c892a6cca.png)
 
 ## Changelog
 
-### Todo
+Splitting tasks/features according to each interface, some taks intertwine between interfaces but it should be fine, I'm putting them where are more relevant.
 
-- [ ] Implement data export - to have files that can be imported in graphical tool like Graphana
+### Todo
+- CLI interface - Eveything for inLine outputs
+  - [ ] Zort
+- Interactive interface - top like interface
+  - [ ] VM specific report - implement a pad with VM cpu/rdy/mem/controller iops, etc, plus vDisks.
+- Data exporter - Time range report, to be able to query historical data and export to files.
+  - [ ] Nodes time range report
+  - [ ] VM time range report
+  - [ ] Define and implement export files. Probably in JSON format. 
 
 
 ### In Progress
-
-- [ ] Interactive interface - top like interface
-  - [x] Node CPU graph
-  - [X] Add VM list @harold Dec 27, 2021
+- CLI interface - Eveything for inLine outputs
+  - [ ] Zort
+- Interactive interface - top like interface
   - [ ] Sort VMs
-- [ ] Time range report - to be able to query historical data
-  - [ ] Nodes time range report
-  - [ ] VM time range report
+- Data exporter - Time range report, to be able to query historical data and export to files.
+  - [ ] Zort
 
 ### Done ✓
-
-- [x] CLI sort node and vm report by cpu, mem, etc @harold Dec 26, 2021
-- [x] CLI vm report @harold Dec 25, 2021
-- [x] CLI node report @harold Dec 17, 2021
+- CLI interface - Eveything for inLine outputs
+  - [x] CLI sort node and vm report by cpu, mem, etc @harold Dec 26, 2021
+  - [x] CLI vm report @harold Dec 25, 2021
+  - [x] CLI node report @harold Dec 17, 2021
+- Interactive interface - top like interface
+  - [x] Node CPU graph @harold Dec 19, 2021
+  - [X] Add VM list @harold Dec 27, 2021
+- Data exporter - Time range report, to be able to query historical data and export to files.
+  - [x] Zort
 
 ## Why narf?
-I had almost decided to change the name from `sre_perf` to `nar` for a while, to make it sound more UNIX like (I thougth about `nstat` but that's already in use), then one day it start to lingering in my head as `narf`, that's when I remembered about _Pinky and The Brain_... the sound "_just say narf_" is some sort of "_jacuna matata_" from Pinky, the reflection of The Brain just before the song is quite cliche but I still believe with a deep meaning.
+I had almost decided to change the name from `sre_perf` to `nar` for a while, to make it sound more UNIX like (I thougth about `nstat` but that's already in use), then one day it start lingering in my head as `narf`, that's when I remembered about _Pinky and The Brain_... the sound "_just say narf_" is some sort of "_jacuna matata_" from Pinky, the reflection of The Brain just before the song is quite cliche but I still believe with a deep meaning.
+
+Initially the letter ***F*** had no meaning, and it was there just to make the command sounds fun (fun things are more memorable, more easy to remember), then a friend suggested ***F***acilitator and I found it quite convenient.
 
 [![narf](https://user-images.githubusercontent.com/52970459/147395459-03f77395-12cb-429a-a7fa-0b773353e7b6.jpg)](https://www.youtube.com/watch?v=lZBQ0tXA-QM)
 
