@@ -152,9 +152,15 @@ class VmReporter(Reporter):
     Reporter.__init__(self)
     self.ARITHMOS_ENTITY_PROTO = ArithmosEntityProto.kVM
     self.max_vm_name_width = 0
+
+    # The reason this conversion exists is because we want to abstract
+    # the actual attribute names with something more human friendly 
+    # and easy to remember. We also want to abstract this from the
+    # UI classes.
     self.sort_conversion = {
       "name": "vm_name",
       "cpu": "-hypervisor_cpu_usage_ppm",
+      "rdy": "-hypervisor.cpu_ready_time_ppm",
       "mem": "-memory_usage_ppm",
       "iops": "-controller_num_iops",
       "bw": "-controller_io_bandwidth_kBps",
@@ -289,11 +295,12 @@ class UiCli(Ui):
       today = datetime.date.today()
       time_now = datetime.datetime.now().strftime("%H:%M:%S")
       vms = self.vm_reporter.overall_live_report(sort)
-      print("{time:<11} {vm:<{width}} {cpu:>6} {mem:>6} {iops:>6} {bw:>6} "
-            "{lat:>6}".format(
+      print("{time:<11} {vm:<{width}} {cpu:>6} {rdy:>6} {mem:>6} {iops:>6} "
+            "{bw:>6} {lat:>6}".format(
               time=str(today),
               vm="VM Name",
               cpu="CPU%",
+              rdy="RDY%",
               mem="MEM%",
               iops="IOPs",
               bw = "B/W",
@@ -303,6 +310,7 @@ class UiCli(Ui):
       for vm in vms:
         print("{0:<11} {v[vm_name]:<{width}} "
               "{v[hypervisor_cpu_usage_percent]:>6.2f} "
+              "{v[hypervisor.cpu_ready_time_ppm]:>6.2f} "
               "{v[memory_usage_percent]:>6.2f} "
               "{v[controller_num_iops]:>6} "
               "{v[controller_io_bandwidth_kBps]:>6.2f} "
@@ -433,10 +441,11 @@ class UiInteractive(Ui):
     self.vm_overall_pad.attroff(curses.color_pair(2))
 
     self.vm_overall_pad.addstr(1, 1,
-            "{vm:<{width}} {cpu:>6} {mem:>6} {iops:>6} {bw:>6} "
+            "{vm:<{width}} {cpu:>6} {rdy:>6} {mem:>6} {iops:>6} {bw:>6} "
             "{lat:>6}".format(
               vm="VM Name",
               cpu="CPU%",
+              rdy="RDY%",
               mem="MEM%",
               iops="IOPs",
               bw = "B/W",
@@ -452,6 +461,7 @@ class UiInteractive(Ui):
       vm = vms[i]
       self.vm_overall_pad.addstr(i + 2, 1, "{v[vm_name]:<{width}} "
                                  "{v[hypervisor_cpu_usage_percent]:>6.2f} "
+                                 "{v[hypervisor.cpu_ready_time_ppm]:>6.2f} "
                                  "{v[memory_usage_percent]:>6.2f} "
                                  "{v[controller_num_iops]:>6} "
                                  "{v[controller_io_bandwidth_kBps]:>6.2f} "
@@ -503,7 +513,8 @@ if __name__ == "__main__":
     parser.add_argument('--uvms', '-v', action='store_true',
                         help="Overall user VMs activity report")
     parser.add_argument('--sort', '-s',
-                        choices=["name", "cpu","mem","iops","bw", "lat"],
+                        choices=["name", "cpu", "rdy", "mem",
+                                 "iops","bw", "lat"],
                         default="name", help="Sort output")    
     parser.add_argument('--test', '-t', action='store_true',
                         help="Place holder for testing new features")    
