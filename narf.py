@@ -187,11 +187,11 @@ class VmReporter(Reporter):
 
     sort_by = self.sort_conversion[sort]
 
-    filter_by= "power_state==on;"
+    filter_by= "power_state==on"
     if node_names:
       node_names_str = ",".join(["node_name==" + node_name
                                  for node_name in node_names])
-      filter_by += node_names_str
+      filter_by += ";" + node_names_str
 
     stats = self._get_vm_live_stats(field_name_list=field_names,
                                     sort_criteria=sort_by,
