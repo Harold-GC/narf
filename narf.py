@@ -373,6 +373,10 @@ class UiInteractive(Ui):
     curses.init_pair(self.WHITE_BLACK, curses.COLOR_WHITE, curses.COLOR_BLACK)    
 
   def initialize_strings(self):
+    """
+    More strings should be initialized for this function to make sense.
+    TODO: Remove if not necessary.
+    """
     self.title = " NARF "
 
   def safe_noautorefresh(self, pad,
@@ -440,9 +444,8 @@ class UiInteractive(Ui):
     for i in range(0, len(nodes)):
       node = nodes[i]
       rangex = int(0.5 * node["hypervisor_cpu_usage_percent"])
-      # check this: title = " NARF "[:self.width-1] for trim string size.
       self.nodes_cpu_pad.addstr(i + 2, 1, "{0:<20} {1:>5.2f} |{2:50}"
-                                .format(node["node_name"],
+                                .format(node["node_name"][:20],
                                         node["hypervisor_cpu_usage_percent"],
                                         "#" * rangex))      
 
@@ -480,7 +483,7 @@ class UiInteractive(Ui):
     for i in range(0, len(vms)):
       vm = vms[i]
       self.vm_overall_pad.addstr(i + 2, 1,
-                            "{v[vm_name]:<{width}} "
+                            "{v[vm_name]:<{max_vm_name_width}} "
                             "{v[hypervisor_cpu_usage_percent]:>6.2f} "
                             "{v[hypervisor.cpu_ready_time_ppm]:>6.2f} "
                             "{v[memory_usage_percent]:>6.2f} "
@@ -488,7 +491,7 @@ class UiInteractive(Ui):
                             "{v[controller_io_bandwidth_kBps]:>6.2f} "
                             "{v[controller_avg_io_latency_msecs]:>6.2f} "
                             .format(v=vm,
-                                    width=self.vm_reporter.max_vm_name_width))
+                                    max_vm_name_width=self.vm_reporter.max_vm_name_width))
 
     self.safe_noautorefresh(self.vm_overall_pad, 0, 0, y, x, pad_size_y, 80)    
           
