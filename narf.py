@@ -431,12 +431,15 @@ class UiInteractive(Ui):
 
   def render_nodes_cpu_pad(self, y, x):
     self.stdscr.noutrefresh()
+    pad_size_y, pad_size_x =self.nodes_cpu_pad.getmaxyx()
+    
     self.nodes_cpu_pad.attron(curses.A_BOLD)
     self.nodes_cpu_pad.addstr(0, 3, " Nodes CPU ")
     
     self.nodes_cpu_pad.addstr(1, 1, "{0:<20} {1:>5} |{2:50}"
-                              .format("Name","CPU%","0%         |25%         "
-                                      "|50%        |75%     100%|"))
+                  .format("Name",
+                          "CPU%",
+                          "0%         |25%         |50%        |75%     100%|"))
 
     self.nodes_cpu_pad.attroff(curses.A_BOLD)
 
@@ -449,7 +452,8 @@ class UiInteractive(Ui):
                                         node["hypervisor_cpu_usage_percent"],
                                         "#" * rangex))      
 
-    self.safe_noautorefresh(self.nodes_cpu_pad, 0, 0, y, x, 9, 80)
+    self.safe_noautorefresh(self.nodes_cpu_pad, 0, 0, y, x, pad_size_y, 80)
+    return y + pad_size_y
 
   def render_vm_overall_pad(self, y, x):
     self.stdscr.noutrefresh()
@@ -493,7 +497,8 @@ class UiInteractive(Ui):
                             .format(v=vm,
                                     max_vm_name_width=self.vm_reporter.max_vm_name_width))
 
-    self.safe_noautorefresh(self.vm_overall_pad, 0, 0, y, x, pad_size_y, 80)    
+    self.safe_noautorefresh(self.vm_overall_pad, 0, 0, y, x, pad_size_y, 80)
+    return y + pad_size_y
           
   def render_main_screen(self, stdscr):
     self.stdscr.clear()
@@ -501,16 +506,23 @@ class UiInteractive(Ui):
 
     # Set invisible cursor
     curses.curs_set(0)
-    
+
     while (self.key != ord('q')):
+      
+      current_y_position = 2
+
       # Initialization
       self.stdscr.clear()
       self.height, self.width = stdscr.getmaxyx()
       self.stdscr.border()
 
       self.render_header()
-      self.render_nodes_cpu_pad(2,1)
-      self.render_vm_overall_pad(10,1)
+
+      if current_y_position < self.height:
+        current_y_position = self.render_nodes_cpu_pad(current_y_position,1)
+
+      if current_y_position < self.height - 2:
+        current_y_position = self.render_vm_overall_pad(current_y_position,1)
       
       # Refresh the screen
       self.stdscr.noutrefresh()
