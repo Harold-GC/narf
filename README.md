@@ -6,7 +6,8 @@ Inspired in old school UNIX commands like `sar`, `iostat` and `top`, aim to be a
 
 ## Usage
 ```
-usage: narf.py [-h] [--nodes] [--uvms] [--sort {name,cpu,mem,iops,bw,lat}]
+usage: narf.py [-h] [--nodes] [--node-name NODE_NAME] [--uvms]
+               [--sort {name,cpu,rdy,mem,iops,bw,lat}] [--test]
                [sec] [count]
 
 Report cluster activity
@@ -17,10 +18,13 @@ positional arguments:
 
 optional arguments:
   -h, --help            show this help message and exit
-  --nodes, -n           Overal nodes activity report
-  --uvms, -v            Overal user VMs activity report
-  --sort {name,cpu,mem,iops,bw,lat}, -s {name,cpu,mem,iops,bw,lat}
+  --nodes, -n           Overall nodes activity report
+  --node-name NODE_NAME, -N NODE_NAME
+                        Filter VMs by node name
+  --uvms, -v            Overall user VMs activity report
+  --sort {name,cpu,rdy,mem,iops,bw,lat}, -s {name,cpu,rdy,mem,iops,bw,lat}
                         Sort output
+  --test, -t            Place holder for testing new features
 
 "When you eliminate the impossible, whatever remains, however improbable, must
 be the truth." Spock.
@@ -78,6 +82,30 @@ nutanix@NTNX-CVM:10.66.38.141:~$ ./narf.py -v -s cpu | head -30
 21:23:58    MYSQL_ERA                        4.68   0.51  81.84      0   0.00   6.25
 21:23:58    log_server                       4.39   0.52  40.14      7   0.20   2.98
 21:23:58    karbon-nh-karbon-099282-k8s-ma   3.93   0.10  22.31      1   0.02   2.48
+```
+
+### Filter VMs by node and sort by CPU ready time
+```
+nutanix@NTNX-CVM:10.66.38.141:~/tmp$ ./narf.py -vN Prolix1 -s rdy 1 1
+2021-12-28  VM Name                          CPU%   RDY%   MEM%   IOPs    B/W    LAT
+23:24:48    harold-ocp-cp-2                 26.98  11.78  55.86     27   0.25   2.02
+23:24:48    harold-ocp-cp-1                 24.38  11.68  48.14     35   0.28   2.35
+23:24:48    harold-ocp-cp-3                 25.24  11.61  52.27     28   0.25   2.37
+23:24:48    NTNX-Omega-2                    25.06   3.29  51.49     29   0.19   3.46
+23:24:48    NTNX-14SM15510002-A-CVM         62.20   2.17  67.74      0   0.00   0.00
+23:24:48    harold-ocp-bootstrap             1.60   1.50  17.19      2   0.01   1.31
+23:24:48    WinAdminCenter-core              2.31   1.37  41.00      2   0.02   1.76
+23:24:48    harold-ocp-svc                   1.23   1.35  16.91      0   0.00   6.90
+23:24:48    harold-ocp-app-1                 1.04   0.76  10.29     20   0.11   1.88
+23:24:48    pkruchok-w2k12                   0.28   0.68  15.13      0   0.00   0.00
+23:24:48    Ubuntu-1                         0.38   0.28  60.83      0   0.00   0.00
+23:24:48    tar-c8-1                         1.16   0.28  52.45      0   0.00   0.00
+23:24:48    vm-0-2112                        0.41   0.27  44.98      0   0.01   1.04
+23:24:48    CentOS8                          0.03   0.19  26.64      0   0.00   0.00
+23:24:48    To be Removed - vm-0-211213-03   0.19   0.19  43.87      1   0.02   1.27
+23:24:48    CentOS7                          0.13   0.19  10.03      0   0.00   0.00
+23:24:48    alpine-HAProxy                   0.74   0.16  10.14      0   0.00   1.18
+23:24:48    CentOS_puppet_agent              0.18   0.11  21.98      0   0.00  10.86
 ```
 
 ### Interactive mode (top like interface)

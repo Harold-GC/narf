@@ -116,9 +116,11 @@ class NodeReporter(Reporter):
                  "avg_io_latency_usecs", "io_bandwidth_kBps"]
 
     sort_by = self.sort_conversion[sort]
+    filter_by= ""
     all_nodes = []
     stats = self._get_node_live_stats(field_name_list=field_names,
-                                      sort_criteria=sort_by)
+                                      sort_criteria=sort_by,
+                                      filter_criteria=filter_by)
     for node_stat in stats:
       node = {
 	"node_name": node_stat.node_name,
@@ -175,8 +177,7 @@ class VmReporter(Reporter):
     entity_list = response.entity_list.vm
     return entity_list
 
-    
-  def overall_live_report(self, sort="name"):
+  def overall_live_report(self, sort="name", node_names=[]):
     field_names=["vm_name",
                  "hypervisor_cpu_usage_ppm",
                  "hypervisor.cpu_ready_time_ppm",
@@ -185,11 +186,18 @@ class VmReporter(Reporter):
                  "controller_avg_io_latency_usecs"]
 
     sort_by = self.sort_conversion[sort]
-    filter_by= "power_state==on"
-    all_vms = []
+
+    filter_by= "power_state==on;"
+    if node_names:
+      node_names_str = ",".join(["node_name==" + node_name
+                                 for node_name in node_names])
+      filter_by += node_names_str
+
     stats = self._get_vm_live_stats(field_name_list=field_names,
                                     sort_criteria=sort_by,
                                     filter_criteria=filter_by)
+
+    all_vms = []
     for vm_stat in stats:
 
       # Convert stats from Arithmos generic stat format into a dictionary.
@@ -290,13 +298,13 @@ class UiCli(Ui):
       print("")
       time.sleep(sec)
 
-  def uvms_overall_live_report(self, sec, count, sort="name"):
+  def uvms_overall_live_report(self, sec, count, sort="name", node_names=[]):
     i = 0
     while i < count:
       i += 1
       today = datetime.date.today()
       time_now = datetime.datetime.now().strftime("%H:%M:%S")
-      vms = self.vm_reporter.overall_live_report(sort)
+      vms = self.vm_reporter.overall_live_report(sort, node_names)
       print("{time:<11} {vm:<{width}} {cpu:>6} {rdy:>6} {mem:>6} {iops:>6} "
             "{bw:>6} {lat:>6}".format(
               time=str(today),
@@ -414,7 +422,7 @@ class UiInteractive(Ui):
     if sort_key == ord('c'): return "cpu"
     return self.sort
 
-      
+
   def render_header(self):
     # Turning on attributes for title
     self.stdscr.attron(curses.color_pair(self.RED))
@@ -487,15 +495,15 @@ class UiInteractive(Ui):
     for i in range(0, len(vms)):
       vm = vms[i]
       self.vm_overall_pad.addstr(i + 2, 1,
-                            "{v[vm_name]:<{max_vm_name_width}} "
-                            "{v[hypervisor_cpu_usage_percent]:>6.2f} "
-                            "{v[hypervisor.cpu_ready_time_ppm]:>6.2f} "
-                            "{v[memory_usage_percent]:>6.2f} "
-                            "{v[controller_num_iops]:>6} "
-                            "{v[controller_io_bandwidth_kBps]:>6.2f} "
-                            "{v[controller_avg_io_latency_msecs]:>6.2f} "
-                            .format(v=vm,
-                                    max_vm_name_width=self.vm_reporter.max_vm_name_width))
+                    "{v[vm_name]:<{max_vm_name_width}} "
+                    "{v[hypervisor_cpu_usage_percent]:>6.2f} "
+                    "{v[hypervisor.cpu_ready_time_ppm]:>6.2f} "
+                    "{v[memory_usage_percent]:>6.2f} "
+                    "{v[controller_num_iops]:>6} "
+                    "{v[controller_io_bandwidth_kBps]:>6.2f} "
+                    "{v[controller_avg_io_latency_msecs]:>6.2f} "
+                    .format(v=vm,
+                        max_vm_name_width=self.vm_reporter.max_vm_name_width))
 
     self.safe_noautorefresh(self.vm_overall_pad, 0, 0, y, x, pad_size_y, 80)
     return y + pad_size_y
@@ -539,11 +547,13 @@ if __name__ == "__main__":
   try:
     parser = argparse.ArgumentParser(
       description="Report cluster activity",
-      epilog='"When you eliminate the impossible, whatever remains,'
+      epilog='"When you eliminate the impossible, whatever remains, '
              'however improbable, must be the truth." Spock.'
     )
     parser.add_argument('--nodes', '-n', action='store_true',
                         help="Overall nodes activity report")
+    parser.add_argument('--node-name', '-N', action='append',
+                        help="Filter VMs by node name")
     parser.add_argument('--uvms', '-v', action='store_true',
                         help="Overall user VMs activity report")
     parser.add_argument('--sort', '-s',
@@ -563,15 +573,15 @@ if __name__ == "__main__":
         ui_cli = UiCli()
         ui_cli.nodes_overall_live_report(args.sec, args.count, args.sort)
       except KeyboardInterrupt:
-        print("Goodbye")
+        print("Narf!")
         exit(0)
 
     elif args.uvms:
       try:
         ui_cli = UiCli()        
-        ui_cli.uvms_overall_live_report(args.sec, args.count, args.sort)
+        ui_cli.uvms_overall_live_report(args.sec, args.count, args.sort, args.node_name)
       except KeyboardInterrupt:
-        print("Goodbye")
+        print("Zort!")
         exit(0)
       
     elif args.test:
