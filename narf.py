@@ -346,6 +346,8 @@ class UiInteractive(Ui):
     self.initialize_colors()
     self.initialize_strings()
 
+    self.key = 0
+    self.sort = "cpu"
     self.height = 0
     self.width = 0
     
@@ -373,20 +375,6 @@ class UiInteractive(Ui):
   def initialize_strings(self):
     self.title = " NARF "
 
-  def render_header(self):
-    # Turning on attributes for title
-    self.stdscr.attron(curses.color_pair(self.RED))
-    self.stdscr.attron(curses.A_BOLD)
-    
-    # Rendering title
-    self.stdscr.addstr(0, 5, self.title)
-    self.stdscr.addstr(0, self.width - 12,
-                       datetime.datetime.now().strftime("%H:%M:%S"))
-    
-    # Turning off attributes for title
-    self.stdscr.attroff(curses.color_pair(2))
-    self.stdscr.attroff(curses.A_BOLD)
-
   def safe_noautorefresh(self, pad,
                          pad_min_y, pad_min_x,
                          screen_y, screen_x,
@@ -412,17 +400,41 @@ class UiInteractive(Ui):
     pad.noutrefresh(pad_min_y, pad_min_x,
                     screen_y, screen_x,
                     main_screen_max_absolute_y, main_screen_max_absolute_x)
+
+  def get_sort_label(self, sort_key):
+    if sort_key == ord('r'): return "rdy"
+    if sort_key == ord('m'): return "mem"
+    if sort_key == ord('i'): return "iops"
+    if sort_key == ord('b'): return "bw"
+    if sort_key == ord('l'): return "lat"
+    if sort_key == ord('c'): return "cpu"
+    return self.sort
+
       
+  def render_header(self):
+    # Turning on attributes for title
+    self.stdscr.attron(curses.color_pair(self.RED))
+    self.stdscr.attron(curses.A_BOLD)
+
+    # Rendering title
+    self.stdscr.addstr(0, 5, self.title)
+    self.stdscr.addstr(0, self.width - 12,
+                       datetime.datetime.now().strftime(" %H:%M:%S "))
+
+    # Turning off attributes for title
+    self.stdscr.attroff(curses.color_pair(self.RED))
+    self.stdscr.attroff(curses.A_BOLD)
+
   def render_nodes_cpu_pad(self, y, x):
     self.stdscr.noutrefresh()
     self.nodes_cpu_pad.attron(curses.A_BOLD)
     self.nodes_cpu_pad.addstr(0, 3, " Nodes CPU ")
-    self.nodes_cpu_pad.attroff(curses.color_pair(2))
-    self.nodes_cpu_pad.attroff(curses.A_BOLD)
     
     self.nodes_cpu_pad.addstr(1, 1, "{0:<20} {1:>5} |{2:50}"
                               .format("Name","CPU%","0%         |25%         "
                                       "|50%        |75%     100%|"))
+
+    self.nodes_cpu_pad.attroff(curses.A_BOLD)
 
     nodes = self.node_reporter.overall_live_report()
     for i in range(0, len(nodes)):
@@ -436,12 +448,20 @@ class UiInteractive(Ui):
 
     self.safe_noautorefresh(self.nodes_cpu_pad, 0, 0, y, x, 9, 80)
 
-  def render_vm_pad(self, y, x):
+  def render_vm_overall_pad(self, y, x):
     self.stdscr.noutrefresh()
+    pad_size_y, pad_size_x =self.vm_overall_pad.getmaxyx()
+
+    self.sort = self.get_sort_label(self.key)
+
     self.vm_overall_pad.attron(curses.A_BOLD)
     self.vm_overall_pad.addstr(0, 3, " Overall VMs ")
-    self.vm_overall_pad.attroff(curses.color_pair(2))
+    self.vm_overall_pad.attroff(curses.A_BOLD)
 
+    self.vm_overall_pad.addstr(0, pad_size_x - 15, " Sort: {} "
+                               .format(self.sort))
+
+    self.vm_overall_pad.attron(curses.A_BOLD)
     self.vm_overall_pad.addstr(1, 1,
             "{vm:<{width}} {cpu:>6} {rdy:>6} {mem:>6} {iops:>6} {bw:>6} "
             "{lat:>6}".format(
@@ -455,42 +475,39 @@ class UiInteractive(Ui):
               width=self.vm_reporter.max_vm_name_width))
 
     self.vm_overall_pad.attroff(curses.A_BOLD)
-    
-    
-    sort = "cpu"
-    vms = self.vm_reporter.overall_live_report(sort)
+
+    vms = self.vm_reporter.overall_live_report(self.sort)
     for i in range(0, len(vms)):
       vm = vms[i]
-      self.vm_overall_pad.addstr(i + 2, 1, "{v[vm_name]:<{width}} "
-                                 "{v[hypervisor_cpu_usage_percent]:>6.2f} "
-                                 "{v[hypervisor.cpu_ready_time_ppm]:>6.2f} "
-                                 "{v[memory_usage_percent]:>6.2f} "
-                                 "{v[controller_num_iops]:>6} "
-                                 "{v[controller_io_bandwidth_kBps]:>6.2f} "
-                                 "{v[controller_avg_io_latency_msecs]:>6.2f} "
-                                 .format(v=vm, width=self.vm_reporter.max_vm_name_width))
+      self.vm_overall_pad.addstr(i + 2, 1,
+                            "{v[vm_name]:<{width}} "
+                            "{v[hypervisor_cpu_usage_percent]:>6.2f} "
+                            "{v[hypervisor.cpu_ready_time_ppm]:>6.2f} "
+                            "{v[memory_usage_percent]:>6.2f} "
+                            "{v[controller_num_iops]:>6} "
+                            "{v[controller_io_bandwidth_kBps]:>6.2f} "
+                            "{v[controller_avg_io_latency_msecs]:>6.2f} "
+                            .format(v=vm,
+                                    width=self.vm_reporter.max_vm_name_width))
 
-    pad_size_y, pad_size_x =self.vm_overall_pad.getmaxyx()
     self.safe_noautorefresh(self.vm_overall_pad, 0, 0, y, x, pad_size_y, 80)    
           
   def render_main_screen(self, stdscr):
     self.stdscr.clear()
     self.stdscr.nodelay(1)
-    key = 0
 
     # Set invisible cursor
     curses.curs_set(0)
     
-    while (key != ord('q')):
+    while (self.key != ord('q')):
       # Initialization
       self.stdscr.clear()
       self.height, self.width = stdscr.getmaxyx()
       self.stdscr.border()
 
       self.render_header()
-
       self.render_nodes_cpu_pad(2,1)
-      self.render_vm_pad(10,1)
+      self.render_vm_overall_pad(10,1)
       
       # Refresh the screen
       self.stdscr.noutrefresh()
@@ -500,7 +517,7 @@ class UiInteractive(Ui):
       
       # Wait for next input
       time.sleep(1)
-      key = self.stdscr.getch()
+      self.key = self.stdscr.getch()
 
 
 if __name__ == "__main__":
@@ -533,7 +550,7 @@ if __name__ == "__main__":
       except KeyboardInterrupt:
         print("Goodbye")
         exit(0)
-      
+
     elif args.uvms:
       try:
         ui_cli = UiCli()        
