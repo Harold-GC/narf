@@ -94,13 +94,19 @@ As for the Reporter classes the relationship between super and sub classes and t
 
 ![narf_uml](https://user-images.githubusercontent.com/52970459/147408692-5d58b9f6-593f-4ebc-b818-305c892a6cca.png)
 
-## Limitations
+## Advantages
+ - Provide easy access to cluster performance activity in any use case where access to the web interface via browser is not available.
+ - NARF allows to select a refresh rate specified in seconds from CLI (this will be added to interactive as well), this is timely way to look at cluster activity.
+ - For people familiarized with UNIX/Linux environments who prefer CLI than UI, NARF is a nice altenative to the web interface.
 
- - It only displays Power ON VMs. This is by design, assuming power OFF VMs has no impact on cluster performance.
+## Limitations
+ - It only displays Power ON VMs. This is by design, VMs that are not running has no impact on cluster performance.
  - Display a maximum of 252 VMs. This is the max number of entities that Arithmos query returns.
 
-## Changelog
+## arithmos_cli case and why narf is needed
+```arithmos_cli``` provide quite some flexibility for different types of queries, while this is very powerfull, data is not presented in a human friendly way making it difficult to analyze, and command parameters tends to be complex and hard to remember for most day to day tasks. ```narf``` is not as comprehensive as arithmos, it just has a handfull of genral purpose reports with a small set of paramters to easy remembering, data is tabulated to make it easy to analyze, filter and transform piping to traditional UNIX/Linux commands. 
 
+## Changelog
 Splitting tasks/features according to each interface, some taks intertwine between interfaces but it should be fine, I'm putting them where are more relevant.
 
 ### Todo
@@ -108,6 +114,7 @@ Splitting tasks/features according to each interface, some taks intertwine betwe
   - [ ] Zort
 - Interactive interface - top like interface
   - [ ] VM specific report - implement a pad with VM cpu/rdy/mem/controller iops, etc, plus vDisks.
+  - [ ] Add capability to change refresh rate.
 - Data exporter - Time range report, to be able to query historical data and export to files.
   - [ ] Nodes time range report
   - [ ] VM time range report
