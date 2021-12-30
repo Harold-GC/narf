@@ -39,8 +39,7 @@ class Reporter(object):
   def _get_live_stats(self, entity_type, sort_criteria=None,
                       filter_criteria=None, search_term=None,
                       field_name_list=None):
-    arithmos_interface = ArithmosDataProcessing()
-    ret = arithmos_interface.MasterGetEntitiesStats(
+    ret = self.arithmos_interface.MasterGetEntitiesStats(
       entity_type, sort_criteria, filter_criteria, search_term,
       requested_field_name_list=field_name_list)
     if ret:
@@ -48,6 +47,32 @@ class Reporter(object):
       if response.error == ArithmosErrorProto.kNoError:
         return response
 
+  def _get_time_range_stat_values(self, entity_id, stat,
+                                  start, end, sampling_interval):
+    resp = self.arithmos_interface.MasterGetTimeRangeStats(entity_id,
+                                    self._ARITHMOS_ENTITY_PROTO, stat,
+                                    start, end,
+                                    sampling_interval)
+    if resp:
+      for res in resp.response_list:
+        if res.error == ArithmosErrorProto.kNoError:
+          return res.time_range_stat.value_list
+
+  def _get_time_range_stat_average(self, entity_id, stat,
+                                   start, end, sampling_interval=30):
+    values = self._get_time_range_stat_values(entity_id, stat,
+                                              start, end,
+                                              sampling_interval)
+    if values:
+      counter = 0
+      sum = 0
+      for value in values:
+        if value > 0:
+          counter += 1
+          sum += value
+      return sum / counter
+    return None
+      
   def _get_generic_stats_dict(self, generic_stat_list):
     """
     Transform generic_stat_list returned from arithmos into a dictionary.
@@ -101,6 +126,8 @@ class NodeReporter(Reporter):
       "bw": "-io_bandwidth_kBps",
       "lat" : "-avg_io_latency_usecs"
     }
+    self.nodes = self._get_node_live_stats(sort_criteria="node_name",
+                                           field_name_list=["node_name", "id"])
     
   def _get_node_live_stats(self, sort_criteria=None, filter_criteria=None,
                            search_term=None, field_name_list=None):
@@ -109,7 +136,7 @@ class NodeReporter(Reporter):
                                     search_term, field_name_list)
     entity_list = response.entity_list.node
     return entity_list
-    
+      
   def overall_live_report(self, sort="name"):
     field_names=["node_name", "hypervisor_cpu_usage_ppm",
                  "hypervisor_memory_usage_ppm","num_iops",
@@ -588,6 +615,10 @@ if __name__ == "__main__":
       print("==== TESTING ====")
       #vm_reporter = VmReporter()
       #vm_reporter.test_data_processing()
+
+      node_reporter = NodeReporter()
+      average = node_reporter._get_time_range_stat_average("16", "hypervisor_cpu_usage_ppm", 1640415600000000, 1640419200000000, 60)
+      print("Average = " + str(average /10000))
       
     else:
       ui_interactive = UiInteractive()
