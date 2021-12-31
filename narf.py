@@ -118,7 +118,10 @@ class NodeReporter(Reporter):
     Reporter.__init__(self)
     self._ARITHMOS_ENTITY_PROTO = ArithmosEntityProto.kNode    
     self.max_node_name_width = 0
-    self.sort_conversion = {
+
+    # TODO: Get rid of sort_arithmos_conversion in favor of sort_conversion
+    #       and lambda sorting.
+    self.sort_arithmos_conversion = {
       "name": "node_name",
       "cpu": "-hypervisor_cpu_usage_ppm",
       "mem": "-hypervisor_memory_usage_ppm",
@@ -126,6 +129,16 @@ class NodeReporter(Reporter):
       "bw": "-io_bandwidth_kBps",
       "lat" : "-avg_io_latency_usecs"
     }
+
+    self.sort_conversion = {
+      "name": "node_name",
+      "cpu": "hypervisor_cpu_usage_percent",
+      "mem": "hypervisor_memory_usage_percent",
+      "iops": "num_iops",
+      "bw": "io_bandwidth_mBps",
+      "lat" : "avg_io_latency_msecs"
+    }
+    
     self.nodes = self._get_node_live_stats(sort_criteria="node_name",
                                            field_name_list=["node_name", "id"])
     
@@ -142,11 +155,15 @@ class NodeReporter(Reporter):
                  "hypervisor_memory_usage_ppm","num_iops",
                  "avg_io_latency_usecs", "io_bandwidth_kBps"]
 
-    sort_by = self.sort_conversion[sort]
+    if sort in self.sort_conversion.keys():
+      sort_by = self.sort_conversion[sort]
+    else:
+      sort_by = self.sort_conversion["name"]
+
+    
     filter_by= ""
     all_nodes = []
     stats = self._get_node_live_stats(field_name_list=field_names,
-                                      sort_criteria=sort_by,
                                       filter_criteria=filter_by)
     for node_stat in stats:
       node = {
@@ -159,20 +176,55 @@ class NodeReporter(Reporter):
           node_stat.stats.common_stats.num_iops,
         "avg_io_latency_msecs":
           node_stat.stats.common_stats.avg_io_latency_usecs / 1000,
-        "io_bandwidth_kBps":
+        "io_bandwidth_mBps":
           float(node_stat.stats.common_stats.io_bandwidth_kBps /1024)
       }
 
       # Set value to slice node name. Max is 30 character. This is used for
       # displaying the information
+      # TODO: Move this to UI class.
       if len(node["node_name"]) > 30:
         self.max_node_name_width = 30
         node["node_name"] = node["node_name"][:30]            
       elif len(node["node_name"]) > self.max_node_name_width:
         self.max_node_name_width = len(node["node_name"])
       all_nodes.append(node)
-    return all_nodes
+    if sort_by == "node_name":
+      return sorted(all_nodes, key = lambda node: node[sort_by])
+    else:
+      return sorted(all_nodes, key = lambda node: node[sort_by], reverse=True)
 
+  def overall_time_range_report(self, start, end, sort="name"):
+    if sort in self.sort_conversion.keys():
+      sort_by = self.sort_conversion[sort]
+    else:
+      sort_by = self.sort_conversion["name"]
+      
+    all_nodes = []
+    for node in self.nodes:
+      node_stats = {
+        "node_name": node.node_name,
+        "hypervisor_cpu_usage_percent":
+          self._get_time_range_stat_average(
+            node.id, "hypervisor_cpu_usage_ppm", start, end, 60) / 10000,
+        "hypervisor_memory_usage_percent":
+          self._get_time_range_stat_average(
+            node.id, "hypervisor_memory_usage_ppm", start, end, 60) / 10000,
+        "num_iops":
+          int(self._get_time_range_stat_average(
+            node.id, "num_iops", start, end, 60)),
+        "avg_io_latency_msecs":
+          self._get_time_range_stat_average(
+            node.id, "avg_io_latency_usecs", start, end, 60) / 1000,
+        "io_bandwidth_mBps":
+          self._get_time_range_stat_average(
+            node.id, "io_bandwidth_kBps", start, end, 60) / 1024,
+      }
+      all_nodes.append(node_stats)
+    if sort_by == "node_name":
+      return sorted(all_nodes, key = lambda node: node[sort_by])
+    else:
+      return sorted(all_nodes, key = lambda node: node[sort_by], reverse=True)
 
 class VmReporter(Reporter):
   """Reports for UVMs"""
@@ -186,7 +238,7 @@ class VmReporter(Reporter):
     # the actual attribute names with something more human friendly 
     # and easy to remember. We also want to abstract this from the
     # UI classes.
-    self.sort_conversion = {
+    self.sort_arithmos_conversion = {
       "name": "vm_name",
       "cpu": "-hypervisor_cpu_usage_ppm",
       "rdy": "-hypervisor.cpu_ready_time_ppm",
@@ -212,7 +264,7 @@ class VmReporter(Reporter):
                  "controller_io_bandwidth_kBps",
                  "controller_avg_io_latency_usecs"]
 
-    sort_by = self.sort_conversion[sort]
+    sort_by = self.sort_arithmos_conversion[sort]
 
     filter_by= "power_state==on"
     if node_names:
@@ -317,7 +369,7 @@ class UiCli(Ui):
               "{n[hypervisor_cpu_usage_percent]:>6.2f} "
               "{n[hypervisor_memory_usage_percent]:>6.2f} "
               "{n[num_iops]:>6} "
-              "{n[io_bandwidth_kBps]:>6.2f} "
+              "{n[io_bandwidth_mBps]:>6.2f} "
               "{n[avg_io_latency_msecs]:>6.2f} "
               .format(time=str(time_now),
                       n=node,
@@ -325,6 +377,33 @@ class UiCli(Ui):
       print("")
       time.sleep(sec)
 
+  def nodes_time_range_report(self, start, end, sort="name"):
+    i = 0
+    nodes = self.node_reporter.overall_time_range_report(start,end,sort)
+    print("{time:<11} {node:<{width}} {cpu:>6} {mem:>6} {iops:>6} {bw:>6} "
+          "{lat:>6}".format(
+            time=str(start),
+            node="Node",
+            cpu="CPU%",
+            mem="MEM%",
+            iops="IOPs",
+            bw = "B/W",
+            lat="LAT",
+            width=self.node_reporter.max_node_name_width
+          ))
+    for node in nodes:
+      print("{time:<11} "
+            "{n[node_name]:<{width}} "
+            "{n[hypervisor_cpu_usage_percent]:>6.2f} "
+            "{n[hypervisor_memory_usage_percent]:>6.2f} "
+            "{n[num_iops]:>6} "
+            "{n[io_bandwidth_mBps]:>6.2f} "
+            "{n[avg_io_latency_msecs]:>6.2f} "
+            .format(time=start,
+                    n=node,
+                    width=self.node_reporter.max_node_name_width))
+    print("")
+  
   def uvms_overall_live_report(self, sec, count, sort="name", node_names=[]):
     i = 0
     while i < count:
@@ -616,9 +695,13 @@ if __name__ == "__main__":
       #vm_reporter = VmReporter()
       #vm_reporter.test_data_processing()
 
-      node_reporter = NodeReporter()
-      average = node_reporter._get_time_range_stat_average("16", "hypervisor_cpu_usage_ppm", 1640415600000000, 1640419200000000, 60)
-      print("Average = " + str(average /10000))
+      #node_reporter = NodeReporter()
+      #average = node_reporter._get_time_range_stat_average("16", "hypervisor_cpu_usage_ppm", 1640415600000000, 1640419200000000, 60)
+      #print("Average = " + str(average /10000))
+      #node_reporter.overall_time_range_report(1640415600000000,1640419200000000,"hypervisor_cpu_usage_percent")
+
+      ui_cli = UiCli()
+      ui_cli.nodes_time_range_report(1640854800000000,1640858400000000,"foo")
       
     else:
       ui_interactive = UiInteractive()
