@@ -103,7 +103,8 @@ class Reporter(object):
     stats. If a stat in the desired list is missing from the stat list
     then it add it with a value of 0 and returns a new list.
 
-    TODO: There may be a better way to do this.
+    TODO: There may be a better way to do this. 
+          Review if this is valid.
     """
     for desired_stat in desired_stat_list:
       if desired_stat not in stats:
@@ -199,7 +200,7 @@ class NodeReporter(Reporter):
       sort_by = self.sort_conversion[sort]
     else:
       sort_by = self.sort_conversion["name"]
-      
+
     all_nodes = []
     for node in self.nodes:
       node_stats = {
@@ -379,27 +380,29 @@ class UiCli(Ui):
 
   def nodes_time_range_report(self, start, end, sort="name"):
     i = 0
-    nodes = self.node_reporter.overall_time_range_report(start,end,sort)
-    print("{time:<11} {node:<{width}} {cpu:>6} {mem:>6} {iops:>6} {bw:>6} "
+    usec_start = int(args.start_time.strftime("%s") + "000000")
+    usec_end = int(args.end_time.strftime("%s") + "000000")
+    nodes = self.node_reporter.overall_time_range_report(usec_start,usec_end,sort)
+    print(self.node_reporter.max_node_name_width)
+    print("{time:<21} {node:<{width}} {cpu:>6} {mem:>6} {iops:>6} {bw:>6} "
           "{lat:>6}".format(
-            time=str(start),
+            time=start.strftime("%Y/%m/%d-%H:%M:%S"),
             node="Node",
             cpu="CPU%",
             mem="MEM%",
             iops="IOPs",
             bw = "B/W",
             lat="LAT",
-            width=self.node_reporter.max_node_name_width
-          ))
+            width=self.node_reporter.max_node_name_width))
     for node in nodes:
-      print("{time:<11} "
+      print("{time:<21} "
             "{n[node_name]:<{width}} "
             "{n[hypervisor_cpu_usage_percent]:>6.2f} "
             "{n[hypervisor_memory_usage_percent]:>6.2f} "
             "{n[num_iops]:>6} "
             "{n[io_bandwidth_mBps]:>6.2f} "
             "{n[avg_io_latency_msecs]:>6.2f} "
-            .format(time=start,
+            .format(time=start.strftime("%Y/%m/%d-%H:%M:%S"),
                     n=node,
                     width=self.node_reporter.max_node_name_width))
     print("")
@@ -648,6 +651,13 @@ class UiInteractive(Ui):
       time.sleep(1)
       self.key = self.stdscr.getch()
 
+      
+def valid_date(date_string):
+  try:
+    return datetime.datetime.strptime(date_string, "%Y/%m/%d-%H:%M:%S")
+  except ValueError:
+    msg = "Invalid date: {0!r}".format(date_string)
+    raise argparse.ArgumentTypeError(msg)
 
 if __name__ == "__main__":
   try:
@@ -665,7 +675,13 @@ if __name__ == "__main__":
     parser.add_argument('--sort', '-s',
                         choices=["name", "cpu", "rdy", "mem",
                                  "iops","bw", "lat"],
-                        default="name", help="Sort output")    
+                        default="name", help="Sort output")
+    parser.add_argument( "-start-time", "-S", 
+                         help="Start time in format YYYY/MM/DD-hh:mm:ss. Local time.", 
+                         type=valid_date)    
+    parser.add_argument( "-end-time", "-E", 
+                         help="End time in format YYYY/MM/DD-hh:mm:ss. Local time", 
+                         type=valid_date)    
     parser.add_argument('--test', '-t', action='store_true',
                         help="Place holder for testing new features")    
     parser.add_argument('sec', type=int, nargs="?", default=3,
@@ -673,11 +689,25 @@ if __name__ == "__main__":
     parser.add_argument('count', type=int, nargs="?", default=1000,
                         help="Number of iterations")
     args = parser.parse_args()
-    
+
+    if args.start_time and args.end_time:
+      if args.start_time >= args.end_time:
+        parser.print_usage()
+        print("Invalid date: --start-time must be before --end-time")
+        exit(1)
+ 
     if args.nodes:
       try:
-        ui_cli = UiCli()
-        ui_cli.nodes_overall_live_report(args.sec, args.count, args.sort)
+        ui_cli = UiCli()        
+
+        if not args.start_time and not args.end_time:
+          ui_cli.nodes_overall_live_report(args.sec, args.count, args.sort)
+        elif args.start_time and args.end_time:
+          ui_cli.nodes_time_range_report(args.start_time,args.end_time,args.sort)
+        else:
+          parser.print_usage()
+          print("Invalid date: Arguments --start-time and --end-time should come together")
+          
       except KeyboardInterrupt:
         print("Narf!")
         exit(0)
@@ -695,13 +725,11 @@ if __name__ == "__main__":
       #vm_reporter = VmReporter()
       #vm_reporter.test_data_processing()
 
-      #node_reporter = NodeReporter()
-      #average = node_reporter._get_time_range_stat_average("16", "hypervisor_cpu_usage_ppm", 1640415600000000, 1640419200000000, 60)
-      #print("Average = " + str(average /10000))
-      #node_reporter.overall_time_range_report(1640415600000000,1640419200000000,"hypervisor_cpu_usage_percent")
-
+      node_reporter = NodeReporter()
+      #print(datetime.datetime.strptime("2022/01/01-12:00:00", "%Y/%m/%d-%H:%M:%S"))
+      #print(args.start_time.strftime('%s'))
       ui_cli = UiCli()
-      ui_cli.nodes_time_range_report(1640854800000000,1640858400000000,"foo")
+      ui_cli.nodes_time_range_report(args.start_time,args.end_time,"foo")
       
     else:
       ui_interactive = UiInteractive()

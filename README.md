@@ -139,7 +139,7 @@ Splitting tasks/features according to each interface, some taks intertwine betwe
 
 ### Todo
 - CLI interface - Eveything for inLine outputs
-  - [ ] Zort
+  - [ ] Add name filtering in node report (-N argument)
 - Interactive interface - top like interface
   - [ ] VM specific report - implement a pad with VM cpu/rdy/mem/controller iops, etc, plus vDisks.
   - [ ] Add capability to change refresh rate.
