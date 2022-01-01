@@ -70,8 +70,9 @@ class Reporter(object):
         if value > 0:
           counter += 1
           sum += value
-      return sum / counter
-    return None
+      if sum > 0:
+        return sum / counter
+    return -1
       
   def _get_generic_stats_dict(self, generic_stat_list):
     """
@@ -201,25 +202,30 @@ class NodeReporter(Reporter):
     else:
       sort_by = self.sort_conversion["name"]
 
+    sampling_interval=30
     all_nodes = []
     for node in self.nodes:
       node_stats = {
         "node_name": node.node_name,
         "hypervisor_cpu_usage_percent":
           self._get_time_range_stat_average(
-            node.id, "hypervisor_cpu_usage_ppm", start, end, 60) / 10000,
+            node.id, "hypervisor_cpu_usage_ppm", start, end,
+            sampling_interval) / 10000,
         "hypervisor_memory_usage_percent":
           self._get_time_range_stat_average(
-            node.id, "hypervisor_memory_usage_ppm", start, end, 60) / 10000,
+            node.id, "hypervisor_memory_usage_ppm", start, end,
+            sampling_interval) / 10000,
         "num_iops":
           int(self._get_time_range_stat_average(
-            node.id, "num_iops", start, end, 60)),
+            node.id, "num_iops", start, end, sampling_interval)),
         "avg_io_latency_msecs":
           self._get_time_range_stat_average(
-            node.id, "avg_io_latency_usecs", start, end, 60) / 1000,
+            node.id, "avg_io_latency_usecs", start, end,
+            sampling_interval) / 1000,
         "io_bandwidth_mBps":
           self._get_time_range_stat_average(
-            node.id, "io_bandwidth_kBps", start, end, 60) / 1024,
+            node.id, "io_bandwidth_kBps", start, end,
+            sampling_interval) / 1024,
       }
       all_nodes.append(node_stats)
     if sort_by == "node_name":
@@ -347,8 +353,14 @@ class UiCli(Ui):
   """CLI interface"""
 
   def nodes_overall_live_report(self, sec, count, sort="name"):
+    if not sec or sec < 0:
+      sec = 0
+      count = 1
+    else:
+      if not count or count < 0: count = 1000
     i = 0
     while i < count:
+      time.sleep(sec)
       i += 1
       today = datetime.date.today()
       time_now = datetime.datetime.now().strftime("%H:%M:%S")
@@ -376,17 +388,16 @@ class UiCli(Ui):
                       n=node,
                       width=self.node_reporter.max_node_name_width))
       print("")
-      time.sleep(sec)
 
-  def nodes_time_range_report(self, start, end, sort="name"):
+  def _nodes_time_range_report_helper(self, start_time, end_time, sort="name"):
     i = 0
-    usec_start = int(args.start_time.strftime("%s") + "000000")
-    usec_end = int(args.end_time.strftime("%s") + "000000")
-    nodes = self.node_reporter.overall_time_range_report(usec_start,usec_end,sort)
-    print(self.node_reporter.max_node_name_width)
+    usec_start = int(start_time.strftime("%s") + "000000")
+    usec_end = int(end_time.strftime("%s") + "000000")
+    nodes = self.node_reporter.overall_time_range_report(
+      usec_start,usec_end,sort)
     print("{time:<21} {node:<{width}} {cpu:>6} {mem:>6} {iops:>6} {bw:>6} "
           "{lat:>6}".format(
-            time=start.strftime("%Y/%m/%d-%H:%M:%S"),
+            time=start_time.strftime("%Y/%m/%d-%H:%M:%S"),
             node="Node",
             cpu="CPU%",
             mem="MEM%",
@@ -402,12 +413,45 @@ class UiCli(Ui):
             "{n[num_iops]:>6} "
             "{n[io_bandwidth_mBps]:>6.2f} "
             "{n[avg_io_latency_msecs]:>6.2f} "
-            .format(time=start.strftime("%Y/%m/%d-%H:%M:%S"),
+            .format(time=start_time.strftime("%Y/%m/%d-%H:%M:%S"),
                     n=node,
                     width=self.node_reporter.max_node_name_width))
     print("")
-  
+
+  def nodes_time_range_report(self, start_time, end_time,
+                              sec=None, sort="name"):
+    if (end_time - start_time ).seconds < 30:
+      print("ERROR: Invalid dates, difference between start and "
+        "end is less than 30 seconds.\n"
+        "       Minimum time difference for historic report is 30 seconds.")
+      return False
+    if not sec:
+      self._nodes_time_range_report_helper(start_time, end_time, sort)
+      return True
+    elif sec < 30:
+      print("INFO: Invalid interval, minimum value 30 seconds for "
+            "historic report. \n"
+            "      Setting interval to 30 seconds.")
+      sec = 30
+    step_time = start_time
+    delta_time = start_time + datetime.timedelta(seconds=sec)
+    if delta_time > end_time:
+      print("INFO: Invalid interval, greater than the difference "
+            "between start and end time.\n"
+            "      Setting single interval between start and end.")
+      self._nodes_time_range_report_helper(start_time, end_time, sort)
+    else:
+      while step_time < end_time:
+        self._nodes_time_range_report_helper(step_time, delta_time, sort)
+        step_time = delta_time
+        delta_time += datetime.timedelta(seconds=sec)
+
   def uvms_overall_live_report(self, sec, count, sort="name", node_names=[]):
+    if not sec or sec < 0:
+      sec = 0
+      count = 1
+    else:
+      if not count or count < 0: count = 1000
     i = 0
     while i < count:
       i += 1
@@ -659,6 +703,10 @@ def valid_date(date_string):
     msg = "Invalid date: {0!r}".format(date_string)
     raise argparse.ArgumentTypeError(msg)
 
+
+# TODO: Need to do a better job here.
+#       Too much logic for a main function.
+#       Move this to a main class.
 if __name__ == "__main__":
   try:
     parser = argparse.ArgumentParser(
@@ -677,16 +725,18 @@ if __name__ == "__main__":
                                  "iops","bw", "lat"],
                         default="name", help="Sort output")
     parser.add_argument( "-start-time", "-S", 
-                         help="Start time in format YYYY/MM/DD-hh:mm:ss. Local time.", 
+                         help="Start time in format YYYY/MM/DD-hh:mm:ss. "
+                               "Specified in local time.",
                          type=valid_date)    
     parser.add_argument( "-end-time", "-E", 
-                         help="End time in format YYYY/MM/DD-hh:mm:ss. Local time", 
+                         help="End time in format YYYY/MM/DD-hh:mm:ss. "
+                               "Specified in local time",
                          type=valid_date)    
     parser.add_argument('--test', '-t', action='store_true',
                         help="Place holder for testing new features")    
-    parser.add_argument('sec', type=int, nargs="?", default=3,
+    parser.add_argument('sec', type=int, nargs="?", default=None,
                         help="Interval in seconds")
-    parser.add_argument('count', type=int, nargs="?", default=1000,
+    parser.add_argument('count', type=int, nargs="?", default=None,
                         help="Number of iterations")
     args = parser.parse_args()
 
@@ -703,10 +753,14 @@ if __name__ == "__main__":
         if not args.start_time and not args.end_time:
           ui_cli.nodes_overall_live_report(args.sec, args.count, args.sort)
         elif args.start_time and args.end_time:
-          ui_cli.nodes_time_range_report(args.start_time,args.end_time,args.sort)
+          ui_cli.nodes_time_range_report(args.start_time,
+                                         args.end_time,
+                                         args.sec,
+                                         args.sort)
         else:
           parser.print_usage()
-          print("Invalid date: Arguments --start-time and --end-time should come together")
+          print("Invalid date: Arguments --start-time and "
+                "--end-time should come together")
           
       except KeyboardInterrupt:
         print("Narf!")
@@ -715,7 +769,10 @@ if __name__ == "__main__":
     elif args.uvms:
       try:
         ui_cli = UiCli()        
-        ui_cli.uvms_overall_live_report(args.sec, args.count, args.sort, args.node_name)
+        ui_cli.uvms_overall_live_report(args.sec,
+                                        args.count,
+                                        args.sort,
+                                        args.node_name)
       except KeyboardInterrupt:
         print("Zort!")
         exit(0)
