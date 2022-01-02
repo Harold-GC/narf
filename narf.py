@@ -185,7 +185,7 @@ class NodeReporter(Reporter):
     else:
       return sorted(all_nodes, key = lambda node: node[sort_by], reverse=True)
 
-  def overall_time_range_report(self, start, end, sort="name"):
+  def overall_time_range_report(self, start, end, sort="name", nodes=[]):
     if sort in self.sort_conversion.keys():
       sort_by = self.sort_conversion[sort]
     else:
@@ -227,7 +227,7 @@ class VmReporter(Reporter):
 
   def __init__(self):
     Reporter.__init__(self)
-    self.ARITHMOS_ENTITY_PROTO = ArithmosEntityProto.kVM
+    self._ARITHMOS_ENTITY_PROTO = ArithmosEntityProto.kVM
     self.max_vm_name_width = 0
 
     # The reason this conversion exists is because we want to abstract
@@ -246,7 +246,7 @@ class VmReporter(Reporter):
     
   def _get_vm_live_stats(self, sort_criteria=None, filter_criteria=None,
                            search_term=None, field_name_list=None):
-    response = self._get_live_stats(self.ARITHMOS_ENTITY_PROTO,
+    response = self._get_live_stats(self._ARITHMOS_ENTITY_PROTO,
                                     sort_criteria, filter_criteria,
                                     search_term, field_name_list)
     entity_list = response.entity_list.vm
@@ -335,7 +335,74 @@ class VmReporter(Reporter):
       return sorted(all_vms, key = lambda node: node[sort_by])
     else:
       return sorted(all_vms, key = lambda node: node[sort_by], reverse=True)
-      
+
+  def overall_time_range_report(self, start, end, sort="name", node_names=[]):
+    if sort in self.sort_conversion.keys():
+      sort_by = self.sort_conversion[sort]
+    else:
+      sort_by = self.sort_conversion["name"]
+
+
+    # TODO: Needs to test on the behavior of when a VM is shutdown,
+    #       and see if there is a way to confirm in which host a VM
+    #       was running during time period of the report.
+    #
+    # Following code filter by running VMs:
+    #filter_by = "power_state==on"
+    #if node_names:
+    #  node_names_str = ",".join(["node_name==" + node_name
+    #                             for node_name in node_names])
+    #  filter_by += ";" + node_names_str
+    #
+    filter_by = ""
+    if node_names:
+      filter_by = ",".join(["node_name==" + node_name
+                                 for node_name in node_names])
+
+    vm_list = self._get_vm_live_stats(field_name_list=["vm_name","id"],
+                                      filter_criteria=filter_by)
+
+    sampling_interval=30
+    all_vms = []
+    for vm in vm_list:
+      # I don't know which other stats might be missing from the data returned
+      # from Arithmos, so more workarounds like previous one may be needed
+      # in the future.
+      # Function _zeroed_missing_stats() should work for most cases.
+
+      vm = {
+	"vm_name": vm.vm_name,
+        "hypervisor_cpu_usage_percent":
+          self._get_time_range_stat_average(
+            vm.id, "hypervisor_cpu_usage_ppm", start, end,
+            sampling_interval) / 10000,
+        "hypervisor_cpu_ready_time_percent":
+          self._get_time_range_stat_average(
+            vm.id, "hypervisor.cpu_ready_time_ppm", start, end,
+            sampling_interval) / 10000,
+        "memory_usage_percent":
+          self._get_time_range_stat_average(
+            vm.id, "memory_usage_ppm", start, end,
+            sampling_interval) / 10000,
+        "controller_num_iops":
+          int(self._get_time_range_stat_average(
+            vm.id, "controller_num_iops", start, end,
+            sampling_interval)),
+        "controller_io_bandwidth_mBps":
+          self._get_time_range_stat_average(
+            vm.id, "controller_io_bandwidth_kBps", start, end,
+            sampling_interval) / 1024,
+        "controller_avg_io_latency_msecs":
+          self._get_time_range_stat_average(
+            vm.id, "controller_avg_io_latency_usecs", start, end,
+            sampling_interval) / 1000,
+      }
+      all_vms.append(vm)
+    if sort_by == "vm_name":
+      return sorted(all_vms, key = lambda vm: vm[sort_by])
+    else:
+      return sorted(all_vms, key = lambda node: node[sort_by], reverse=True)
+
   
 class Ui(object):
   """Display base"""
@@ -346,6 +413,51 @@ class Ui(object):
     
 class UiCli(Ui):
   """CLI interface"""
+
+  # TODO: Need to review this report_time_validator function.
+  #       If need to validate time for functions with different
+  #       a different set of parameters this function is limited
+  #       and will not work.
+  #
+  # Proposal: Make time validator a function that returns boolean
+  #           and the time_range_reports to use it and exit if false.
+  def report_time_validator(self, report_function, start_time, end_time,
+                              sec=None, sort="name", nodes=[]):
+    if start_time >= end_time:
+      parser.print_usage()
+      print("ERROR: Invalid date: Start time must be before end time")
+      return False
+
+    if ((end_time - start_time ).days < 1
+        and (end_time - start_time ).seconds < 30):
+      parser.print_usage()
+      print("ERROR: Invalid dates: difference between start and "
+        "end is less than 30 seconds.\n"
+        "       Minimum time difference for historic report is 30 seconds.")
+      return False
+    if not sec:
+      report_function(start_time, end_time, sort, nodes)
+      return True
+    elif sec < 30:
+      print("INFO: Invalid interval: minimum value 30 seconds for "
+            "historic report. \n"
+            "      Setting interval to 30 seconds.")
+      sec = 30
+
+    step_time = start_time
+    delta_time = start_time + datetime.timedelta(seconds=sec)
+    if delta_time > end_time:
+      print("INFO: Invalid interval: greater than the difference "
+            "between start and end time.\n"
+            "      Setting single interval between start and end.")
+      report_function(start_time, end_time, sort, nodes)
+      return True
+    else:
+      while step_time < end_time:
+        report_function(step_time, delta_time, sort, nodes)
+        step_time = delta_time
+        delta_time += datetime.timedelta(seconds=sec)
+      return True
 
   def nodes_overall_live_report(self, sec, count, sort="name"):
     if not sec or sec < 0:
@@ -384,8 +496,7 @@ class UiCli(Ui):
                       width=self.node_reporter.max_node_name_width))
       print("")
 
-  def _nodes_time_range_report_helper(self, start_time, end_time, sort="name"):
-    i = 0
+  def nodes_overall_time_range_report(self, start_time, end_time, sort="name", hosts=[]):
     usec_start = int(start_time.strftime("%s") + "000000")
     usec_end = int(end_time.strftime("%s") + "000000")
     nodes = self.node_reporter.overall_time_range_report(
@@ -412,44 +523,6 @@ class UiCli(Ui):
                     n=node,
                     width=self.node_reporter.max_node_name_width))
     print("")
-
-  def nodes_time_range_report(self, start_time, end_time,
-                              sec=None, sort="name"):
-    if start_time >= end_time:
-      parser.print_usage()
-      print("Invalid date: Start time must be before end time")
-      return False
-
-    if ((end_time - start_time ).days < 1
-        and (end_time - start_time ).seconds < 30):
-      parser.print_usage()
-      print("ERROR: Invalid dates: difference between start and "
-        "end is less than 30 seconds.\n"
-        "       Minimum time difference for historic report is 30 seconds.")
-      return False
-    if not sec:
-      self._nodes_time_range_report_helper(start_time, end_time, sort)
-      return True
-    elif sec < 30:
-      print("INFO: Invalid interval: minimum value 30 seconds for "
-            "historic report. \n"
-            "      Setting interval to 30 seconds.")
-      sec = 30
-
-    step_time = start_time
-    delta_time = start_time + datetime.timedelta(seconds=sec)
-    if delta_time > end_time:
-      print("INFO: Invalid interval: greater than the difference "
-            "between start and end time.\n"
-            "      Setting single interval between start and end.")
-      self._nodes_time_range_report_helper(start_time, end_time, sort)
-      return True
-    else:
-      while step_time < end_time:
-        self._nodes_time_range_report_helper(step_time, delta_time, sort)
-        step_time = delta_time
-        delta_time += datetime.timedelta(seconds=sec)
-      return True
 
   def uvms_overall_live_report(self, sec, count, sort="name", node_names=[]):
     if not sec or sec < 0:
@@ -488,7 +561,37 @@ class UiCli(Ui):
                       width=self.vm_reporter.max_vm_name_width))
       print("")
       time.sleep(sec)
-      
+
+  def uvms_overall_time_range_report(self, start_time, end_time,
+                                     sort="name", node_names=[]):
+    usec_start = int(start_time.strftime("%s") + "000000")
+    usec_end = int(end_time.strftime("%s") + "000000")
+    vms = self.vm_reporter.overall_time_range_report(usec_start,usec_end,
+                                                     sort, node_names)
+    print("{time:<21} {vm:<30} {cpu:>6} {rdy:>6} {mem:>6} {iops:>6} "
+          "{bw:>6} {lat:>6}".format(
+            time=start_time.strftime("%Y/%m/%d-%H:%M:%S"),
+            vm="VM Name",
+            cpu="CPU%",
+            rdy="RDY%",
+            mem="MEM%",
+            iops="IOPs",
+            bw = "B/W",
+            lat="LAT"
+      ))
+    for vm in vms:
+      print("{time:<21} {vm_name:<30} "
+            "{v[hypervisor_cpu_usage_percent]:>6.2f} "
+            "{v[hypervisor_cpu_ready_time_percent]:>6.2f} "
+            "{v[memory_usage_percent]:>6.2f} "
+            "{v[controller_num_iops]:>6} "
+            "{v[controller_io_bandwidth_mBps]:>6.2f} "
+            "{v[controller_avg_io_latency_msecs]:>6.2f} "
+            .format(time=start_time.strftime("%Y/%m/%d-%H:%M:%S"),
+                    vm_name=vm["vm_name"][:30],
+                    v=vm))
+    print("")
+
       
 class UiInteractive(Ui):
   """Interactive interface"""
@@ -752,13 +855,14 @@ if __name__ == "__main__":
         if not args.start_time and not args.end_time:
           ui_cli.nodes_overall_live_report(args.sec, args.count, args.sort)
         elif args.start_time and args.end_time:
-          ui_cli.nodes_time_range_report(args.start_time,
-                                         args.end_time,
-                                         args.sec,
-                                         args.sort)
+          ui_cli.report_time_validator(ui_cli.nodes_overall_time_range_report,
+                                       args.start_time,
+                                       args.end_time,
+                                       args.sec,
+                                       args.sort)
         else:
           parser.print_usage()
-          print("Invalid date: Arguments --start-time and "
+          print("ERROR: Invalid date: Arguments --start-time and "
                 "--end-time should come together")
           
       except KeyboardInterrupt:
@@ -767,11 +871,24 @@ if __name__ == "__main__":
 
     elif args.uvms:
       try:
-        ui_cli = UiCli()        
-        ui_cli.uvms_overall_live_report(args.sec,
-                                        args.count,
-                                        args.sort,
-                                        args.node_name)
+        ui_cli = UiCli()
+        if not args.start_time and not args.end_time:
+          ui_cli.uvms_overall_live_report(args.sec,
+                                          args.count,
+                                          args.sort,
+                                          args.node_name)
+        elif args.start_time and args.end_time:
+          ui_cli.report_time_validator(ui_cli.uvms_overall_time_range_report,
+                                       args.start_time,
+                                       args.end_time,
+                                       args.sec,
+                                       args.sort,
+                                       args.node_name)
+        else:
+          parser.print_usage()
+          print("ERROR: Invalid date: Arguments --start-time and "
+                "--end-time should come together")
+
       except KeyboardInterrupt:
         print("Zort!")
         exit(0)

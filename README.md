@@ -128,7 +128,8 @@ As for the Reporter classes the relationship between super and sub classes and t
  - For people familiarized with UNIX/Linux environments who prefer CLI than UI, NARF is a nice altenative to the web interface.
 
 ## Limitations
- - It only displays Power ON VMs. This is by design, VMs that are not running has no impact on cluster performance.
+ - For live reports it only displays running VMs. Assuming stopped VMs has no impact on cluster performance.
+ - Historic reports doesn't filter by running VMs, but it doesn't account for VM migrations. This is, at the moment for historic reports a VM is listed in the host where is currently running.
  - Display a maximum of 252 VMs. This is the max number of entities that Arithmos query returns.
 
 ## arithmos_cli case and why narf is needed
