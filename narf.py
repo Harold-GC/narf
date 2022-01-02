@@ -109,7 +109,7 @@ class Reporter(object):
     """
     for desired_stat in desired_stat_list:
       if desired_stat not in stats:
-        stats[desired_stat] = 0
+        stats[desired_stat] = -1
     return stats
 
   
