@@ -121,17 +121,6 @@ class NodeReporter(Reporter):
     self._ARITHMOS_ENTITY_PROTO = ArithmosEntityProto.kNode    
     self.max_node_name_width = 0
 
-    # TODO: Get rid of sort_arithmos_conversion in favor of sort_conversion
-    #       and lambda sorting.
-    self.sort_arithmos_conversion = {
-      "name": "node_name",
-      "cpu": "-hypervisor_cpu_usage_ppm",
-      "mem": "-hypervisor_memory_usage_ppm",
-      "iops": "-num_iops",
-      "bw": "-io_bandwidth_kBps",
-      "lat" : "-avg_io_latency_usecs"
-    }
-
     self.sort_conversion = {
       "name": "node_name",
       "cpu": "hypervisor_cpu_usage_percent",
