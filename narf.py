@@ -234,16 +234,16 @@ class VmReporter(Reporter):
     # the actual attribute names with something more human friendly 
     # and easy to remember. We also want to abstract this from the
     # UI classes.
-    self.sort_arithmos_conversion = {
+    self.sort_conversion = {
       "name": "vm_name",
-      "cpu": "-hypervisor_cpu_usage_ppm",
-      "rdy": "-hypervisor.cpu_ready_time_ppm",
-      "mem": "-memory_usage_ppm",
-      "iops": "-controller_num_iops",
-      "bw": "-controller_io_bandwidth_kBps",
-      "lat" : "-controller_avg_io_latency_usecs"
+      "cpu": "hypervisor_cpu_usage_percent",
+      "rdy": "hypervisor_cpu_ready_time_percent",
+      "mem": "memory_usage_percent",
+      "iops": "controller_num_iops",
+      "bw": "controller_io_bandwidth_mBps",
+      "lat" : "controller_avg_io_latency_msecs"
     }
-
+    
   def _get_vm_live_stats(self, sort_criteria=None, filter_criteria=None,
                            search_term=None, field_name_list=None):
     response = self._get_live_stats(self.ARITHMOS_ENTITY_PROTO,
@@ -260,7 +260,10 @@ class VmReporter(Reporter):
                  "controller_io_bandwidth_kBps",
                  "controller_avg_io_latency_usecs"]
 
-    sort_by = self.sort_arithmos_conversion[sort]
+    if sort in self.sort_conversion.keys():
+      sort_by = self.sort_conversion[sort]
+    else:
+      sort_by = self.sort_conversion["name"]
 
     filter_by= "power_state==on"
     if node_names:
@@ -269,7 +272,6 @@ class VmReporter(Reporter):
       filter_by += ";" + node_names_str
 
     stats = self._get_vm_live_stats(field_name_list=field_names,
-                                    sort_criteria=sort_by,
                                     filter_criteria=filter_by)
 
     all_vms = []
@@ -307,13 +309,13 @@ class VmReporter(Reporter):
 	"vm_name": vm_stat.vm_name,
         "hypervisor_cpu_usage_percent":
           vm_stat.stats.hypervisor_cpu_usage_ppm / 10000,
-        "hypervisor.cpu_ready_time_ppm":
+        "hypervisor_cpu_ready_time_percent":
           generic_stats["hypervisor.cpu_ready_time_ppm"] / 10000,
         "memory_usage_percent":
           generic_stats["memory_usage_ppm"] /10000,
         "controller_num_iops":
           vm_stat.stats.common_stats.controller_num_iops,
-        "controller_io_bandwidth_kBps":
+        "controller_io_bandwidth_mBps":
           vm_stat.stats.common_stats.controller_io_bandwidth_kBps /1024,
         "controller_avg_io_latency_msecs":
           vm_stat.stats.common_stats.controller_avg_io_latency_usecs / 1000
@@ -321,6 +323,7 @@ class VmReporter(Reporter):
 
       # Set value to slice vm name. Max is 30 character. This is used for
       # displaying the information
+      # TODO: Move this to UI class.      
       if len(vm["vm_name"]) > 30:
         self.max_vm_name_width = 30
         vm["vm_name"] = vm["vm_name"][:30]            
@@ -328,7 +331,10 @@ class VmReporter(Reporter):
         self.max_vm_name_width = len(vm["vm_name"])
       
       all_vms.append(vm)	
-    return all_vms
+    if sort_by == "vm_name":
+      return sorted(all_vms, key = lambda node: node[sort_by])
+    else:
+      return sorted(all_vms, key = lambda node: node[sort_by], reverse=True)
       
   
 class Ui(object):
@@ -462,10 +468,10 @@ class UiCli(Ui):
       for vm in vms:
         print("{0:<11} {v[vm_name]:<{width}} "
               "{v[hypervisor_cpu_usage_percent]:>6.2f} "
-              "{v[hypervisor.cpu_ready_time_ppm]:>6.2f} "
+              "{v[hypervisor_cpu_ready_time_percent]:>6.2f} "
               "{v[memory_usage_percent]:>6.2f} "
               "{v[controller_num_iops]:>6} "
-              "{v[controller_io_bandwidth_kBps]:>6.2f} "
+              "{v[controller_io_bandwidth_mBps]:>6.2f} "
               "{v[controller_avg_io_latency_msecs]:>6.2f} "
               .format(str(time_now),
                       v=vm,
@@ -639,10 +645,10 @@ class UiInteractive(Ui):
       self.vm_overall_pad.addstr(i + 2, 1,
                     "{v[vm_name]:<{max_vm_name_width}} "
                     "{v[hypervisor_cpu_usage_percent]:>6.2f} "
-                    "{v[hypervisor.cpu_ready_time_ppm]:>6.2f} "
+                    "{v[hypervisor_cpu_ready_time_percent]:>6.2f} "
                     "{v[memory_usage_percent]:>6.2f} "
                     "{v[controller_num_iops]:>6} "
-                    "{v[controller_io_bandwidth_kBps]:>6.2f} "
+                    "{v[controller_io_bandwidth_mBps]:>6.2f} "
                     "{v[controller_avg_io_latency_msecs]:>6.2f} "
                     .format(v=vm,
                         max_vm_name_width=self.vm_reporter.max_vm_name_width))
