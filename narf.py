@@ -415,8 +415,15 @@ class UiCli(Ui):
 
   def nodes_time_range_report(self, start_time, end_time,
                               sec=None, sort="name"):
-    if (end_time - start_time ).seconds < 30:
-      print("ERROR: Invalid dates, difference between start and "
+    if start_time >= end_time:
+      parser.print_usage()
+      print("Invalid date: Start time must be before end time")
+      return False
+
+    if ((end_time - start_time ).days < 1
+        and (end_time - start_time ).seconds < 30):
+      parser.print_usage()
+      print("ERROR: Invalid dates: difference between start and "
         "end is less than 30 seconds.\n"
         "       Minimum time difference for historic report is 30 seconds.")
       return False
@@ -424,22 +431,25 @@ class UiCli(Ui):
       self._nodes_time_range_report_helper(start_time, end_time, sort)
       return True
     elif sec < 30:
-      print("INFO: Invalid interval, minimum value 30 seconds for "
+      print("INFO: Invalid interval: minimum value 30 seconds for "
             "historic report. \n"
             "      Setting interval to 30 seconds.")
       sec = 30
+
     step_time = start_time
     delta_time = start_time + datetime.timedelta(seconds=sec)
     if delta_time > end_time:
-      print("INFO: Invalid interval, greater than the difference "
+      print("INFO: Invalid interval: greater than the difference "
             "between start and end time.\n"
             "      Setting single interval between start and end.")
       self._nodes_time_range_report_helper(start_time, end_time, sort)
+      return True
     else:
       while step_time < end_time:
         self._nodes_time_range_report_helper(step_time, delta_time, sort)
         step_time = delta_time
         delta_time += datetime.timedelta(seconds=sec)
+      return True
 
   def uvms_overall_live_report(self, sec, count, sort="name", node_names=[]):
     if not sec or sec < 0:
@@ -734,12 +744,6 @@ if __name__ == "__main__":
     parser.add_argument('count', type=int, nargs="?", default=None,
                         help="Number of iterations")
     args = parser.parse_args()
-
-    if args.start_time and args.end_time:
-      if args.start_time >= args.end_time:
-        parser.print_usage()
-        print("Invalid date: --start-time must be before --end-time")
-        exit(1)
  
     if args.nodes:
       try:
