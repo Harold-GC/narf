@@ -108,7 +108,7 @@ nutanix@NTNX-CVM:10.66.38.141:~/tmp$ ./narf.py -vN Prolix1 -s rdy 1 1
 23:24:48    CentOS_puppet_agent              0.18   0.11  21.98      0   0.00  10.86
 ```
 
-### Time range node report
+### Time range node report with one hour sample
 ```
 nutanix@NTNX-CVM:10.66.38.142:~/tmp$ ./narf.py -ns lat -S 2022/01/01-09:00:00 -E 2022/01/01-12:00:00 3600
 2022/01/01-09:00:00   Node   CPU%   MEM%   IOPs    B/W    LAT
@@ -133,7 +133,7 @@ nutanix@NTNX-CVM:10.66.38.142:~/tmp$ ./narf.py -ns lat -S 2022/01/01-09:00:00 -E
 2022/01/01-11:00:00   Prolix5  74.20  88.98    181   5.22   0.68 
 ```
 
-### Time range VM report with single sample
+### Time range VM report with single sample sorted by latency
 ```
 nutanix@NTNX-CVM:10.66.38.142:~/tmp$ ./narf.py -vs lat -N prolix1 -S 2022/01/01-09:00:00 -E 2022/01/01-12:00:00
 2022/01/01-09:00:00   VM Name                          CPU%   RDY%   MEM%   IOPs    B/W    LAT
