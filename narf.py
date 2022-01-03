@@ -499,7 +499,7 @@ class UiCli(Ui):
       time_now = datetime.datetime.now().strftime("%H:%M:%S")
       nodes = self.node_reporter.overall_live_report(sort)
       print("{time:<11} {node:<{width}} {cpu:>6} {mem:>6} "
-            "{ciops:>8} {hiops:>8} {iops:>8} {bw:>6} "
+            "{ciops:>8} {hiops:>8} {iops:>8} {bw:>8} "
             "{lat:>6}".format(
               time=str(today),
               node="Node",
@@ -520,7 +520,7 @@ class UiCli(Ui):
               "{n[controller_num_iops]:>8.2f} "
               "{n[hypervisor_num_iops]:>8.2f} "
               "{n[num_iops]:>8.2f} "
-              "{n[io_bandwidth_mBps]:>6.2f} "
+              "{n[io_bandwidth_mBps]:>8.2f} "
               "{n[avg_io_latency_msecs]:>6.2f} "
               .format(time=str(time_now),
                       n=node,
@@ -533,7 +533,7 @@ class UiCli(Ui):
     nodes = self.node_reporter.overall_time_range_report(
       usec_start,usec_end,sort)
     print("{time:<21} {node:<20} {cpu:>6} {mem:>6} "
-          "{ciops:>8} {hiops:>8} {iops:>8} {bw:>6} "
+          "{ciops:>8} {hiops:>8} {iops:>8} {bw:>8} "
           "{lat:>6}".format(
             time=start_time.strftime("%Y/%m/%d-%H:%M:%S"),
             node="Node",
@@ -552,7 +552,7 @@ class UiCli(Ui):
             "{n[controller_num_iops]:>8.2f} "
             "{n[hypervisor_num_iops]:>8.2f} "
             "{n[num_iops]:>8.2f} "
-            "{n[io_bandwidth_mBps]:>6.2f} "
+            "{n[io_bandwidth_mBps]:>8.2f} "
             "{n[avg_io_latency_msecs]:>6.2f} "
             .format(time=start_time.strftime("%Y/%m/%d-%H:%M:%S"),
                     n=node,
