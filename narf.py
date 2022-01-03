@@ -143,7 +143,8 @@ class NodeReporter(Reporter):
       
   def overall_live_report(self, sort="name"):
     field_names=["node_name", "hypervisor_cpu_usage_ppm",
-                 "hypervisor_memory_usage_ppm","num_iops",
+                 "hypervisor_memory_usage_ppm", "hypervisor_num_iops",
+                 "controller_num_iops", "num_iops",
                  "avg_io_latency_usecs", "io_bandwidth_kBps"]
 
     if sort in self.sort_conversion.keys():
@@ -163,6 +164,10 @@ class NodeReporter(Reporter):
           node_stat.stats.hypervisor_cpu_usage_ppm / 10000,
         "hypervisor_memory_usage_percent":
           node_stat.stats.hypervisor_memory_usage_ppm / 10000,
+        "controller_num_iops":
+          node_stat.stats.common_stats.controller_num_iops,
+        "hypervisor_num_iops":
+          node_stat.stats.common_stats.hypervisor_num_iops,
         "num_iops":
           node_stat.stats.common_stats.num_iops,
         "avg_io_latency_msecs":
@@ -204,6 +209,14 @@ class NodeReporter(Reporter):
           self._get_time_range_stat_average(
             node.id, "hypervisor_memory_usage_ppm", start, end,
             sampling_interval) / 10000,
+        "controller_num_iops":
+        self._get_time_range_stat_average(
+            node.id, "controller_num_iops", start, end,
+            sampling_interval),
+        "hypervisor_num_iops":
+        self._get_time_range_stat_average(
+            node.id, "hypervisor_num_iops", start, end,
+            sampling_interval),
         "num_iops":
           int(self._get_time_range_stat_average(
             node.id, "num_iops", start, end, sampling_interval)),
@@ -256,7 +269,8 @@ class VmReporter(Reporter):
     field_names=["vm_name",
                  "hypervisor_cpu_usage_ppm",
                  "hypervisor.cpu_ready_time_ppm",
-                 "memory_usage_ppm","controller_num_iops",
+                 "memory_usage_ppm", "controller_num_iops",
+                 "hypervisor_num_iops", "num_iops",
                  "controller_io_bandwidth_kBps",
                  "controller_avg_io_latency_usecs"]
 
@@ -315,6 +329,10 @@ class VmReporter(Reporter):
           generic_stats["memory_usage_ppm"] /10000,
         "controller_num_iops":
           vm_stat.stats.common_stats.controller_num_iops,
+        "hypervisor_num_iops":
+          vm_stat.stats.common_stats.hypervisor_num_iops,
+        "num_iops":
+          vm_stat.stats.common_stats.num_iops,
         "controller_io_bandwidth_mBps":
           vm_stat.stats.common_stats.controller_io_bandwidth_kBps /1024,
         "controller_avg_io_latency_msecs":
@@ -387,6 +405,14 @@ class VmReporter(Reporter):
         "controller_num_iops":
           int(self._get_time_range_stat_average(
             vm.id, "controller_num_iops", start, end,
+            sampling_interval)),
+        "hypervisor_num_iops":
+          int(self._get_time_range_stat_average(
+            vm.id, "hypervisor_num_iops", start, end,
+            sampling_interval)),
+        "num_iops":
+          int(self._get_time_range_stat_average(
+            vm.id, "num_iops", start, end,
             sampling_interval)),
         "controller_io_bandwidth_mBps":
           self._get_time_range_stat_average(
@@ -472,12 +498,15 @@ class UiCli(Ui):
       today = datetime.date.today()
       time_now = datetime.datetime.now().strftime("%H:%M:%S")
       nodes = self.node_reporter.overall_live_report(sort)
-      print("{time:<11} {node:<{width}} {cpu:>6} {mem:>6} {iops:>6} {bw:>6} "
+      print("{time:<11} {node:<{width}} {cpu:>6} {mem:>6} "
+            "{ciops:>8} {hiops:>8} {iops:>8} {bw:>6} "
             "{lat:>6}".format(
               time=str(today),
               node="Node",
               cpu="CPU%",
               mem="MEM%",
+              ciops="cIOPs",
+              hiops="hIOPs",
               iops="IOPs",
               bw = "B/W",
               lat="LAT",
@@ -488,7 +517,9 @@ class UiCli(Ui):
               "{n[node_name]:<{width}} "
               "{n[hypervisor_cpu_usage_percent]:>6.2f} "
               "{n[hypervisor_memory_usage_percent]:>6.2f} "
-              "{n[num_iops]:>6} "
+              "{n[controller_num_iops]:>8.2f} "
+              "{n[hypervisor_num_iops]:>8.2f} "
+              "{n[num_iops]:>8.2f} "
               "{n[io_bandwidth_mBps]:>6.2f} "
               "{n[avg_io_latency_msecs]:>6.2f} "
               .format(time=str(time_now),
@@ -501,26 +532,31 @@ class UiCli(Ui):
     usec_end = int(end_time.strftime("%s") + "000000")
     nodes = self.node_reporter.overall_time_range_report(
       usec_start,usec_end,sort)
-    print("{time:<21} {node:<{width}} {cpu:>6} {mem:>6} {iops:>6} {bw:>6} "
+    print("{time:<21} {node:<20} {cpu:>6} {mem:>6} "
+          "{ciops:>8} {hiops:>8} {iops:>8} {bw:>6} "
           "{lat:>6}".format(
             time=start_time.strftime("%Y/%m/%d-%H:%M:%S"),
             node="Node",
             cpu="CPU%",
             mem="MEM%",
+            ciops="cIOPs",
+            hiops="hIOPs",
             iops="IOPs",
             bw = "B/W",
-            lat="LAT",
-            width=self.node_reporter.max_node_name_width))
+            lat="LAT"))
     for node in nodes:
       print("{time:<21} "
-            "{n[node_name]:<{width}} "
+            "{node_name:<20} "
             "{n[hypervisor_cpu_usage_percent]:>6.2f} "
             "{n[hypervisor_memory_usage_percent]:>6.2f} "
-            "{n[num_iops]:>6} "
+            "{n[controller_num_iops]:>8.2f} "
+            "{n[hypervisor_num_iops]:>8.2f} "
+            "{n[num_iops]:>8.2f} "
             "{n[io_bandwidth_mBps]:>6.2f} "
             "{n[avg_io_latency_msecs]:>6.2f} "
             .format(time=start_time.strftime("%Y/%m/%d-%H:%M:%S"),
                     n=node,
+                    node_name=node["node_name"][:20],
                     width=self.node_reporter.max_node_name_width))
     print("")
 
@@ -536,13 +572,15 @@ class UiCli(Ui):
       today = datetime.date.today()
       time_now = datetime.datetime.now().strftime("%H:%M:%S")
       vms = self.vm_reporter.overall_live_report(sort, node_names)
-      print("{time:<11} {vm:<{width}} {cpu:>6} {rdy:>6} {mem:>6} {iops:>6} "
-            "{bw:>6} {lat:>6}".format(
+      print("{time:<11} {vm:<{width}} {cpu:>6} {rdy:>6} {mem:>6} "
+            "{ciops:>6} {hiops:>6} {iops:>6} {bw:>6} {lat:>6}".format(
               time=str(today),
               vm="VM Name",
               cpu="CPU%",
               rdy="RDY%",
               mem="MEM%",
+              ciops="cIOPs",
+              hiops="hIOPs",
               iops="IOPs",
               bw = "B/W",
               lat="LAT",
@@ -554,6 +592,8 @@ class UiCli(Ui):
               "{v[hypervisor_cpu_ready_time_percent]:>6.2f} "
               "{v[memory_usage_percent]:>6.2f} "
               "{v[controller_num_iops]:>6} "
+              "{v[hypervisor_num_iops]:>6} "
+              "{v[num_iops]:>6} "
               "{v[controller_io_bandwidth_mBps]:>6.2f} "
               "{v[controller_avg_io_latency_msecs]:>6.2f} "
               .format(str(time_now),
@@ -568,13 +608,15 @@ class UiCli(Ui):
     usec_end = int(end_time.strftime("%s") + "000000")
     vms = self.vm_reporter.overall_time_range_report(usec_start,usec_end,
                                                      sort, node_names)
-    print("{time:<21} {vm:<30} {cpu:>6} {rdy:>6} {mem:>6} {iops:>6} "
-          "{bw:>6} {lat:>6}".format(
+    print("{time:<21} {vm:<30} {cpu:>6} {rdy:>6} {mem:>6} "
+          "{ciops:>6} {hiops:>6} {iops:>6} {bw:>6} {lat:>6}".format(
             time=start_time.strftime("%Y/%m/%d-%H:%M:%S"),
             vm="VM Name",
             cpu="CPU%",
             rdy="RDY%",
             mem="MEM%",
+            ciops="cIOPs",
+            hiops="hIOPs",
             iops="IOPs",
             bw = "B/W",
             lat="LAT"
@@ -585,6 +627,8 @@ class UiCli(Ui):
             "{v[hypervisor_cpu_ready_time_percent]:>6.2f} "
             "{v[memory_usage_percent]:>6.2f} "
             "{v[controller_num_iops]:>6} "
+            "{v[hypervisor_num_iops]:>6} "
+            "{v[num_iops]:>6} "
             "{v[controller_io_bandwidth_mBps]:>6.2f} "
             "{v[controller_avg_io_latency_msecs]:>6.2f} "
             .format(time=start_time.strftime("%Y/%m/%d-%H:%M:%S"),
