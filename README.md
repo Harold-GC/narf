@@ -181,7 +181,7 @@ As for the Reporter classes the relationship between super and sub classes and t
  - Historic reports doesn't filter by running VMs, but it doesn't account for VM migrations. This is, at the moment for historic reports a VM is listed in the host where is currently running.
  - Display a maximum of 252 VMs. This is the max number of entities that Arithmos query returns.
 
-## arithmos_cli case and why narf is needed
+## arithmos_cli case and why narf
 ```arithmos_cli``` provide quite some flexibility for different types of queries, while this is very powerfull, data is not presented in a human friendly way making it difficult to analyze, and command parameters tends to be complex and hard to remember for most day to day tasks. ```narf``` is not as comprehensive as arithmos, it just has a handfull of genral purpose reports with a small set of paramters to easy remembering, data is tabulated to make it easy to analyze, filter and transform piping to traditional UNIX/Linux commands. 
 
 ## Changelog
