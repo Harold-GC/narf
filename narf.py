@@ -665,7 +665,8 @@ class UiInteractive(Ui):
     self.initialize_strings()
 
     self.key = 0
-    self.sort = "cpu"
+    self.vm_sort = "cpu"
+    self.nodes_sort = "name"
     self.nodes_pad = "cpu"
     self.height = 0
     self.width = 0
@@ -724,6 +725,15 @@ class UiInteractive(Ui):
                     screen_y, screen_x,
                     main_screen_max_absolute_y, main_screen_max_absolute_x)
 
+  def get_nodes_sort_label(self, sort_key):
+    if sort_key == ord('N'): return "name"
+    if sort_key == ord('C'): return "cpu"
+    if sort_key == ord('M'): return "mem"
+    if sort_key == ord('I'): return "iops"
+    if sort_key == ord('B'): return "bw"
+    if sort_key == ord('L'): return "lat"
+    return self.nodes_sort
+
   def get_vm_sort_label(self, sort_key):
     if sort_key == ord('r'): return "rdy"
     if sort_key == ord('m'): return "mem"
@@ -731,7 +741,7 @@ class UiInteractive(Ui):
     if sort_key == ord('b'): return "bw"
     if sort_key == ord('l'): return "lat"
     if sort_key == ord('c'): return "cpu"
-    return self.sort
+    return self.vm_sort
 
   def toggle_nodes_pad(self, toggle_key):
     if toggle_key == ord('n'):
@@ -757,10 +767,16 @@ class UiInteractive(Ui):
   def render_nodes_cpu_pad(self, y, x):
     self.stdscr.noutrefresh()
     pad_size_y, pad_size_x =self.nodes_cpu_pad.getmaxyx()
+    self.nodes_sort = self.get_nodes_sort_label(self.key)
     
     self.nodes_cpu_pad.attron(curses.A_BOLD)
     self.nodes_cpu_pad.addstr(0, 3, " Nodes CPU ")
-    
+    self.nodes_cpu_pad.attroff(curses.A_BOLD)
+
+    self.nodes_cpu_pad.addstr(0, pad_size_x - 15, " Sort: {0:<4} "
+                               .format(self.nodes_sort))
+
+    self.nodes_cpu_pad.attron(curses.A_BOLD)
     self.nodes_cpu_pad.addstr(1, 1, "{0:<20} {1:>6} {2:>6}|{3:50}"
                   .format("Name",
                           "MEM%",
@@ -769,7 +785,7 @@ class UiInteractive(Ui):
 
     self.nodes_cpu_pad.attroff(curses.A_BOLD)
 
-    nodes = self.node_reporter.overall_live_report()
+    nodes = self.node_reporter.overall_live_report(self.nodes_sort)
     for i in range(0, len(nodes)):
       node = nodes[i]
       rangex = int(0.5 * node["hypervisor_cpu_usage_percent"])
@@ -779,15 +795,23 @@ class UiInteractive(Ui):
                                         node["hypervisor_cpu_usage_percent"],
                                         "#" * rangex))      
 
-    self.safe_noautorefresh(self.nodes_cpu_pad, 0, 0, y, x, pad_size_y, pad_size_x)
+    self.safe_noautorefresh(self.nodes_cpu_pad, 0, 0, y, x,
+                            pad_size_y, pad_size_x)
     return y + pad_size_y
 
   def render_nodes_io_pad(self, y, x):
     self.stdscr.noutrefresh()
     pad_size_y, pad_size_x =self.nodes_cpu_pad.getmaxyx()
+    self.nodes_sort = self.get_nodes_sort_label(self.key)
     
     self.nodes_io_pad.attron(curses.A_BOLD)
     self.nodes_io_pad.addstr(0, 3, " Nodes IOPs ")
+    self.nodes_io_pad.attroff(curses.A_BOLD)
+
+    self.nodes_io_pad.addstr(0, pad_size_x - 15, " Sort: {0:<4} "
+                               .format(self.nodes_sort))
+
+    self.nodes_io_pad.attron(curses.A_BOLD)
     
     self.nodes_io_pad.addstr(1, 1, "{0:<20} {1:>8} {2:>8} {3:>8} {4:>8} {5:>6}"
                   .format("Name",
@@ -799,32 +823,33 @@ class UiInteractive(Ui):
 
     self.nodes_io_pad.attroff(curses.A_BOLD)
 
-    nodes = self.node_reporter.overall_live_report()
+    nodes = self.node_reporter.overall_live_report(self.nodes_sort)
     for i in range(0, len(nodes)):
       node = nodes[i]
-      self.nodes_io_pad.addstr(i + 2, 1, "{0:<20} {1:>8} {2:>8} {3:>8} {4:>8.2f} {5:>6.2f}"
+      self.nodes_io_pad.addstr(i + 2, 1, "{0:<20} {1:>8} {2:>8} "
+                               "{3:>8} {4:>8.2f} {5:>6.2f}"
                                 .format(node["node_name"][:20],
                                         node["controller_num_iops"],
                                         node["hypervisor_num_iops"],
                                         node["num_iops"],
-                                        node["avg_io_latency_msecs"],
-                                        node["io_bandwidth_mBps"]))      
+                                        node["io_bandwidth_mBps"],
+                                        node["avg_io_latency_msecs"]))
 
-    self.safe_noautorefresh(self.nodes_io_pad, 0, 0, y, x, pad_size_y, pad_size_x)
+    self.safe_noautorefresh(self.nodes_io_pad, 0, 0, y, x,
+                            pad_size_y, pad_size_x)
     return y + pad_size_y
   
   def render_vm_overall_pad(self, y, x):
     self.stdscr.noutrefresh()
     pad_size_y, pad_size_x =self.vm_overall_pad.getmaxyx()
-
-    self.sort = self.get_vm_sort_label(self.key)
+    self.vm_sort = self.get_vm_sort_label(self.key)
 
     self.vm_overall_pad.attron(curses.A_BOLD)
     self.vm_overall_pad.addstr(0, 3, " Overall VMs ")
     self.vm_overall_pad.attroff(curses.A_BOLD)
 
-    self.vm_overall_pad.addstr(0, pad_size_x - 15, " Sort: {} "
-                               .format(self.sort))
+    self.vm_overall_pad.addstr(0, pad_size_x - 15, " Sort: {0:<4} "
+                               .format(self.vm_sort))
 
     self.vm_overall_pad.attron(curses.A_BOLD)
     self.vm_overall_pad.addstr(1, 1,
@@ -842,7 +867,7 @@ class UiInteractive(Ui):
 
     self.vm_overall_pad.attroff(curses.A_BOLD)
 
-    vms = self.vm_reporter.overall_live_report(self.sort)
+    vms = self.vm_reporter.overall_live_report(self.vm_sort)
     for i in range(0, len(vms)):
       vm = vms[i]
       self.vm_overall_pad.addstr(i + 2, 1,
@@ -856,7 +881,8 @@ class UiInteractive(Ui):
                     "{v[controller_avg_io_latency_msecs]:>8.2f} "
                                  .format(v=vm, vm_name=vm["vm_name"][:30]))
 
-    self.safe_noautorefresh(self.vm_overall_pad, 0, 0, y, x, pad_size_y, pad_size_x)
+    self.safe_noautorefresh(self.vm_overall_pad, 0, 0, y, x,
+                            pad_size_y, pad_size_x)
     return y + pad_size_y
           
   def render_main_screen(self, stdscr):
@@ -896,7 +922,7 @@ class UiInteractive(Ui):
       curses.doupdate()
       
       # Wait for next input
-      time.sleep(1)
+      time.sleep(2)
       self.key = self.stdscr.getch()
 
       
