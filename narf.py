@@ -648,12 +648,17 @@ class UiInteractive(Ui):
     """
     Ui.__init__(self)
     self.stdscr = curses.initscr()
+    
     self.nodes_cpu_pad = curses.newpad(
-      len(self.node_reporter.overall_live_report()) + 3, 80)
+      len(self.node_reporter.overall_live_report()) + 3, 87)
     self.nodes_cpu_pad.border()
 
+    self.nodes_io_pad = curses.newpad(
+      len(self.node_reporter.overall_live_report()) + 3, 87)
+    self.nodes_io_pad.border()
+
     self.vm_overall_pad = curses.newpad(
-      len(self.vm_reporter.overall_live_report()) + 3, 80)
+      len(self.vm_reporter.overall_live_report()) + 3, 87)
     self.vm_overall_pad.border()
     
     self.initialize_colors()
@@ -661,6 +666,7 @@ class UiInteractive(Ui):
 
     self.key = 0
     self.sort = "cpu"
+    self.nodes_pad = "cpu"
     self.height = 0
     self.width = 0
     
@@ -718,7 +724,7 @@ class UiInteractive(Ui):
                     screen_y, screen_x,
                     main_screen_max_absolute_y, main_screen_max_absolute_x)
 
-  def get_sort_label(self, sort_key):
+  def get_vm_sort_label(self, sort_key):
     if sort_key == ord('r'): return "rdy"
     if sort_key == ord('m'): return "mem"
     if sort_key == ord('i'): return "iops"
@@ -727,6 +733,12 @@ class UiInteractive(Ui):
     if sort_key == ord('c'): return "cpu"
     return self.sort
 
+  def toggle_nodes_pad(self, toggle_key):
+    if toggle_key == ord('n'):
+      if self.nodes_pad == "cpu":
+        self.nodes_pad = "iops"
+      elif self.nodes_pad == "iops":
+        self.nodes_pad = "cpu"
 
   def render_header(self):
     # Turning on attributes for title
@@ -749,8 +761,9 @@ class UiInteractive(Ui):
     self.nodes_cpu_pad.attron(curses.A_BOLD)
     self.nodes_cpu_pad.addstr(0, 3, " Nodes CPU ")
     
-    self.nodes_cpu_pad.addstr(1, 1, "{0:<20} {1:>5} |{2:50}"
+    self.nodes_cpu_pad.addstr(1, 1, "{0:<20} {1:>6} {2:>6}|{3:50}"
                   .format("Name",
+                          "MEM%",
                           "CPU%",
                           "0%         |25%         |50%        |75%     100%|"))
 
@@ -760,19 +773,51 @@ class UiInteractive(Ui):
     for i in range(0, len(nodes)):
       node = nodes[i]
       rangex = int(0.5 * node["hypervisor_cpu_usage_percent"])
-      self.nodes_cpu_pad.addstr(i + 2, 1, "{0:<20} {1:>5.2f} |{2:50}"
+      self.nodes_cpu_pad.addstr(i + 2, 1, "{0:<20} {1:>6.2f} {2:>6.2f}|{3:50}"
                                 .format(node["node_name"][:20],
+                                        node["hypervisor_memory_usage_percent"],
                                         node["hypervisor_cpu_usage_percent"],
                                         "#" * rangex))      
 
-    self.safe_noautorefresh(self.nodes_cpu_pad, 0, 0, y, x, pad_size_y, 80)
+    self.safe_noautorefresh(self.nodes_cpu_pad, 0, 0, y, x, pad_size_y, pad_size_x)
     return y + pad_size_y
 
+  def render_nodes_io_pad(self, y, x):
+    self.stdscr.noutrefresh()
+    pad_size_y, pad_size_x =self.nodes_cpu_pad.getmaxyx()
+    
+    self.nodes_io_pad.attron(curses.A_BOLD)
+    self.nodes_io_pad.addstr(0, 3, " Nodes IOPs ")
+    
+    self.nodes_io_pad.addstr(1, 1, "{0:<20} {1:>8} {2:>8} {3:>8} {4:>8} {5:>6}"
+                  .format("Name",
+                          "cIOPs",
+                          "hIOPs",
+                          "IOPs",
+                          "B/W[MB]",
+                          "Lat[ms]"))
+
+    self.nodes_io_pad.attroff(curses.A_BOLD)
+
+    nodes = self.node_reporter.overall_live_report()
+    for i in range(0, len(nodes)):
+      node = nodes[i]
+      self.nodes_io_pad.addstr(i + 2, 1, "{0:<20} {1:>8} {2:>8} {3:>8} {4:>8.2f} {5:>6.2f}"
+                                .format(node["node_name"][:20],
+                                        node["controller_num_iops"],
+                                        node["hypervisor_num_iops"],
+                                        node["num_iops"],
+                                        node["avg_io_latency_msecs"],
+                                        node["io_bandwidth_mBps"]))      
+
+    self.safe_noautorefresh(self.nodes_io_pad, 0, 0, y, x, pad_size_y, pad_size_x)
+    return y + pad_size_y
+  
   def render_vm_overall_pad(self, y, x):
     self.stdscr.noutrefresh()
     pad_size_y, pad_size_x =self.vm_overall_pad.getmaxyx()
 
-    self.sort = self.get_sort_label(self.key)
+    self.sort = self.get_vm_sort_label(self.key)
 
     self.vm_overall_pad.attron(curses.A_BOLD)
     self.vm_overall_pad.addstr(0, 3, " Overall VMs ")
@@ -783,16 +828,17 @@ class UiInteractive(Ui):
 
     self.vm_overall_pad.attron(curses.A_BOLD)
     self.vm_overall_pad.addstr(1, 1,
-            "{vm:<{width}} {cpu:>6} {rdy:>6} {mem:>6} {iops:>6} {bw:>6} "
-            "{lat:>6}".format(
-              vm="VM Name",
+            " {vm_name:<30} {cpu:>6} {rdy:>6} {mem:>6} {ciops:>6} "
+            "{hiops:>6} {bw:>8} {lat:>8}".format(
+              vm_name="VM Name",
               cpu="CPU%",
               rdy="RDY%",
               mem="MEM%",
+              ciops="cIOPs",
+              hiops="hIOPs",
               iops="IOPs",
-              bw = "B/W",
-              lat="LAT",
-              width=self.vm_reporter.max_vm_name_width))
+              bw = "B/W[MB]",
+              lat="LAT[ms]"))
 
     self.vm_overall_pad.attroff(curses.A_BOLD)
 
@@ -800,17 +846,17 @@ class UiInteractive(Ui):
     for i in range(0, len(vms)):
       vm = vms[i]
       self.vm_overall_pad.addstr(i + 2, 1,
-                    "{v[vm_name]:<{max_vm_name_width}} "
+                    " {v[vm_name]:<30} "
                     "{v[hypervisor_cpu_usage_percent]:>6.2f} "
                     "{v[hypervisor_cpu_ready_time_percent]:>6.2f} "
                     "{v[memory_usage_percent]:>6.2f} "
                     "{v[controller_num_iops]:>6} "
-                    "{v[controller_io_bandwidth_mBps]:>6.2f} "
-                    "{v[controller_avg_io_latency_msecs]:>6.2f} "
-                    .format(v=vm,
-                        max_vm_name_width=self.vm_reporter.max_vm_name_width))
+                    "{v[hypervisor_num_iops]:>6} "
+                    "{v[controller_io_bandwidth_mBps]:>8.2f} "
+                    "{v[controller_avg_io_latency_msecs]:>8.2f} "
+                                 .format(v=vm, vm_name=vm["vm_name"][:30]))
 
-    self.safe_noautorefresh(self.vm_overall_pad, 0, 0, y, x, pad_size_y, 80)
+    self.safe_noautorefresh(self.vm_overall_pad, 0, 0, y, x, pad_size_y, pad_size_x)
     return y + pad_size_y
           
   def render_main_screen(self, stdscr):
@@ -831,9 +877,15 @@ class UiInteractive(Ui):
 
       self.render_header()
 
+      # Display nodes pad
       if current_y_position < self.height:
-        current_y_position = self.render_nodes_cpu_pad(current_y_position,1)
+        self.toggle_nodes_pad(self.key)
+        if self.nodes_pad == "cpu":
+          current_y_position = self.render_nodes_cpu_pad(current_y_position,1)
+        elif self.nodes_pad == "iops":
+          current_y_position = self.render_nodes_io_pad(current_y_position,1)
 
+      # Display VMs pad
       if current_y_position < self.height - 2:
         current_y_position = self.render_vm_overall_pad(current_y_position,1)
       
