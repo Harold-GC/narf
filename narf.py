@@ -500,7 +500,7 @@ class UiCli(Ui):
       nodes = self.node_reporter.overall_live_report(sort)
       print("{time:<11} {node:<{width}} {cpu:>6} {mem:>6} "
             "{ciops:>8} {hiops:>8} {iops:>8} {bw:>8} "
-            "{lat:>6}".format(
+            "{lat:>8}".format(
               time=str(today),
               node="Node",
               cpu="CPU%",
@@ -508,8 +508,8 @@ class UiCli(Ui):
               ciops="cIOPs",
               hiops="hIOPs",
               iops="IOPs",
-              bw = "B/W",
-              lat="LAT",
+              bw = "B/W[MB]",
+              lat="LAT[ms]",
               width=self.node_reporter.max_node_name_width
       ))
       for node in nodes:
@@ -521,7 +521,7 @@ class UiCli(Ui):
               "{n[hypervisor_num_iops]:>8.2f} "
               "{n[num_iops]:>8.2f} "
               "{n[io_bandwidth_mBps]:>8.2f} "
-              "{n[avg_io_latency_msecs]:>6.2f} "
+              "{n[avg_io_latency_msecs]:>8.2f} "
               .format(time=str(time_now),
                       n=node,
                       width=self.node_reporter.max_node_name_width))
@@ -534,7 +534,7 @@ class UiCli(Ui):
       usec_start,usec_end,sort)
     print("{time:<21} {node:<20} {cpu:>6} {mem:>6} "
           "{ciops:>8} {hiops:>8} {iops:>8} {bw:>8} "
-          "{lat:>6}".format(
+          "{lat:>8}".format(
             time=start_time.strftime("%Y/%m/%d-%H:%M:%S"),
             node="Node",
             cpu="CPU%",
@@ -542,8 +542,8 @@ class UiCli(Ui):
             ciops="cIOPs",
             hiops="hIOPs",
             iops="IOPs",
-            bw = "B/W",
-            lat="LAT"))
+            bw = "B/W[MB]",
+            lat="LAT[ms]"))
     for node in nodes:
       print("{time:<21} "
             "{node_name:<20} "
@@ -553,7 +553,7 @@ class UiCli(Ui):
             "{n[hypervisor_num_iops]:>8.2f} "
             "{n[num_iops]:>8.2f} "
             "{n[io_bandwidth_mBps]:>8.2f} "
-            "{n[avg_io_latency_msecs]:>6.2f} "
+            "{n[avg_io_latency_msecs]:>8.2f} "
             .format(time=start_time.strftime("%Y/%m/%d-%H:%M:%S"),
                     n=node,
                     node_name=node["node_name"][:20],
@@ -573,7 +573,7 @@ class UiCli(Ui):
       time_now = datetime.datetime.now().strftime("%H:%M:%S")
       vms = self.vm_reporter.overall_live_report(sort, node_names)
       print("{time:<11} {vm:<{width}} {cpu:>6} {rdy:>6} {mem:>6} "
-            "{ciops:>6} {hiops:>6} {iops:>6} {bw:>6} {lat:>6}".format(
+            "{ciops:>6} {hiops:>6} {iops:>6} {bw:>8} {lat:>8}".format(
               time=str(today),
               vm="VM Name",
               cpu="CPU%",
@@ -582,8 +582,8 @@ class UiCli(Ui):
               ciops="cIOPs",
               hiops="hIOPs",
               iops="IOPs",
-              bw = "B/W",
-              lat="LAT",
+              bw = "B/W[MB]",
+              lat="LAT[ms]",
               width=self.vm_reporter.max_vm_name_width
       ))
       for vm in vms:
@@ -594,8 +594,8 @@ class UiCli(Ui):
               "{v[controller_num_iops]:>6} "
               "{v[hypervisor_num_iops]:>6} "
               "{v[num_iops]:>6} "
-              "{v[controller_io_bandwidth_mBps]:>6.2f} "
-              "{v[controller_avg_io_latency_msecs]:>6.2f} "
+              "{v[controller_io_bandwidth_mBps]:>8.2f} "
+              "{v[controller_avg_io_latency_msecs]:>8.2f} "
               .format(str(time_now),
                       v=vm,
                       width=self.vm_reporter.max_vm_name_width))
@@ -609,7 +609,7 @@ class UiCli(Ui):
     vms = self.vm_reporter.overall_time_range_report(usec_start,usec_end,
                                                      sort, node_names)
     print("{time:<21} {vm:<30} {cpu:>6} {rdy:>6} {mem:>6} "
-          "{ciops:>6} {hiops:>6} {iops:>6} {bw:>6} {lat:>6}".format(
+          "{ciops:>6} {hiops:>6} {iops:>6} {bw:>8} {lat:>8}".format(
             time=start_time.strftime("%Y/%m/%d-%H:%M:%S"),
             vm="VM Name",
             cpu="CPU%",
@@ -618,8 +618,8 @@ class UiCli(Ui):
             ciops="cIOPs",
             hiops="hIOPs",
             iops="IOPs",
-            bw = "B/W",
-            lat="LAT"
+            bw = "B/W[MB]",
+            lat="LAT[ms]"
       ))
     for vm in vms:
       print("{time:<21} {vm_name:<30} "
@@ -629,8 +629,8 @@ class UiCli(Ui):
             "{v[controller_num_iops]:>6} "
             "{v[hypervisor_num_iops]:>6} "
             "{v[num_iops]:>6} "
-            "{v[controller_io_bandwidth_mBps]:>6.2f} "
-            "{v[controller_avg_io_latency_msecs]:>6.2f} "
+            "{v[controller_io_bandwidth_mBps]:>8.2f} "
+            "{v[controller_avg_io_latency_msecs]:>8.2f} "
             .format(time=start_time.strftime("%Y/%m/%d-%H:%M:%S"),
                     vm_name=vm["vm_name"][:30],
                     v=vm))
