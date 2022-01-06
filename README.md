@@ -175,7 +175,7 @@ As for the Reporter classes the relationship between super and sub classes and t
 
 For the exporter feature NARF create line protocol files that can be imported to InfluxDB. Each entity type has an schema. All schemas will have the following tags to be able to differentiate the collection and cluster where they come from: _exportId_, _clusterId_ and _clusterName_. Another two common tags _entityId_ and _entityName_ enable the unequivocal identification of each entity. It is through the measurement name that entity type can be identified.
 
-A datapoint will look like this:
+A datapoint looks like this:
 
 ```
    node,exportId=0,clusterId=20986,clusterName=Prolix,entityId=1234,entityName=Prolix1 hypervisorCpuUsagePercent=85.88 ... 1641405558000000000
@@ -202,7 +202,7 @@ __Schema definition:__
 + Field key: hypervisorCpuUsagePercent
 + Field key: hypervisorMemoryUsagePercent
 + Field key: controllerNumIops
-+ Field key: hypervisor_num_iops
++ Field key: hypervisorNumIops
 + Field key: numIops
 + Field key: ioBandwidthMBps
 + Field key: avgIoLatencyMsecs
