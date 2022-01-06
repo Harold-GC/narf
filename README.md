@@ -175,10 +175,13 @@ As for the Reporter classes the relationship between super and sub classes and t
 WIP
 
 This schema has been defined taking in consideration best practices documented here:
+
 https://docs.influxdata.com/influxdb/v2.1/write-data/best-practices/schema-design/
 
 ### VM Schema
+
 __Schema definition:__
+
 - Measurement: vm
 - Tag key: jobId
 - Tag key: clusterId
@@ -194,6 +197,7 @@ __Schema definition:__
 - Field key: controllerAvgIoLatencyMsecs
 
 __Example__
+
 This sample:
 ```
                       VM Name                          CPU%   RDY%   MEM%  cIOPs  hIOPs   IOPs  B/W[MB]  LAT[ms]
@@ -210,8 +214,9 @@ vm,jobId=0,clusterId=20986,clusterName=Prolix,vmName=harold-ocp-cp-1 hypervisorC
 ```
 
 ### Node schema
-*Node Schema*
+
 __Schema definition:__
+
 + Measurement: node
 + Tag key: jobId
 + Tag key: clusterId
@@ -226,6 +231,7 @@ __Schema definition:__
 + Field key: avgIoLatencyMsecs
 
 __Example__
+
 This sample:
 ```
                       Node                   CPU%   MEM%    cIOPs    hIOPs     IOPs  B/W[MB]  LAT[ms]
