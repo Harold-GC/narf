@@ -172,21 +172,68 @@ As for the Reporter classes the relationship between super and sub classes and t
 ![narf_uml](https://user-images.githubusercontent.com/52970459/147408692-5d58b9f6-593f-4ebc-b818-305c892a6cca.png)
 
 ## Exporter schema definition
-WIP
+
+For the exporter feature NARF create line protocol files that can be imported to InfluxDB. Each entity type has an schema. All schemas will have the following tags to be able to differentiate the collection and cluster where they come from: _exportId_, _clusterId_ and _clusterName_. Another two common tags _entityId_ and _entityName_ enable the unequivocal identification of each entity. It is through the measurement name that entity type can be identified.
+
+A datapoint will look like this:
+
+```
+   node,exportId=0,clusterId=20986,clusterName=Prolix,entityId=1234,entityName=Prolix1 hypervisorCpuUsagePercent=85.88 ... 1641405558000000000
+   ---- --------------------------------------------- -------------------------------- -------------------------------->   -------------------
+    |                       |                                          |                               |                            |
+Measurement     Collection and cluster tags                       Entity tags                     Field keys                    Timestamp
+
+```
 
 This schema has been defined taking in consideration best practices documented here:
 
 https://docs.influxdata.com/influxdb/v2.1/write-data/best-practices/schema-design/
+
+### Node schema
+
+__Schema definition:__
+
++ Measurement: node
++ Tag key: exportId
++ Tag key: clusterId
++ Tag key: clusterName
++ Tag key: entityId
++ Tag key: entityName
++ Field key: hypervisorCpuUsagePercent
++ Field key: hypervisorMemoryUsagePercent
++ Field key: controllerNumIops
++ Field key: hypervisor_num_iops
++ Field key: numIops
++ Field key: ioBandwidthMBps
++ Field key: avgIoLatencyMsecs
+
+__Example__
+
+This sample:
+```
+                      Node                   CPU%   MEM%    cIOPs    hIOPs     IOPs  B/W[MB]  LAT[ms]
+2022/01/05-10:00:00   Prolix1               85.88  59.91   163.32    -1.00    62.00     3.01     1.01
+2022/01/05-11:00:00   Prolix1               86.39  59.91   158.04    -1.00    70.00     2.95     1.10
+2022/01/05-12:00:00   Prolix1               86.46  59.92   177.65    -1.00   160.00     5.08     1.14
+```
+
+Translate in this line protocol:
+```
+node,exportId=0,clusterId=20986,clusterName=Prolix,entityId=1234,entityName=Prolix1 hypervisorCpuUsagePercent=85.88,hypervisorMemoryUsagePercent=59.91,controllerNumIops=163.32,hypervisor_num_iops=-1.00,numIops=62.00,ioBandwidthMBps=3.01,avgIoLatencyMsecs=1.01 1641405558000000000
+node,exportId=0,clusterId=20986,clusterName=Prolix,entityId=1234,entityName=Prolix1 hypervisorCpuUsagePercent=86.39,hypervisorMemoryUsagePercent=59.91,controllerNumIops=158.04,hypervisor_num_iops=-1.00,numIops=70.00,ioBandwidthMBps=2.95,avgIoLatencyMsecs=1.10 1641409164000000000
+node,exportId=0,clusterId=20986,clusterName=Prolix,entityId=1234,entityName=Prolix1 hypervisorCpuUsagePercent=86.46,hypervisorMemoryUsagePercent=59.92,controllerNumIops=177.65,hypervisor_num_iops=-1.00,numIops=160.00,ioBandwidthMBps5.08,avgIoLatencyMsecs=1.14 1641412770000000000
+```
 
 ### VM Schema
 
 __Schema definition:__
 
 - Measurement: vm
-- Tag key: jobId
+- Tag key: exportId
 - Tag key: clusterId
 - Tag key: clusterName
-- Tag key: vmName
+- tag key: entityId
+- Tag key: entityName
 - Field key: hypervisorCpuUsagePercent
 - Field key: hypervisorCpuReadyTimePercent
 - Field key: memoryUsagePercent
@@ -208,43 +255,9 @@ This sample:
 
 Translate in this line protocol:
 ```
-vm,jobId=0,clusterId=20986,clusterName=Prolix,vmName=harold-ocp-cp-1 hypervisorCpuUsagePercent=24.36,hypervisorCpuReadyTimePercent=15.48,memoryUsagePercent=63.02,controllerNumIops=33,hypervisorNumIops=-1,numIops=-1,controllerIoBandwidthMBps=0.47,controllerAvgIoLatencyMsecs=2.81 1641405558000000000
-vm,jobId=0,clusterId=20986,clusterName=Prolix,vmName=harold-ocp-cp-1 hypervisorCpuUsagePercent=23.70,hypervisorCpuReadyTimePercent=14.61,memoryUsagePercent=64.03,controllerNumIops=33,hypervisorNumIops=-1,numIops=-1,controllerIoBandwidthMBps=0.45,controllerAvgIoLatencyMsecs=2.79 1641409164000000000
-vm,jobId=0,clusterId=20986,clusterName=Prolix,vmName=harold-ocp-cp-1 hypervisorCpuUsagePercent=25.24,hypervisorCpuReadyTimePercent=16.87,memoryUsagePercent=61.20,controllerNumIops=34,hypervisorNumIops=-1,numIops=-1,controllerIoBandwidthMBps=0.48,controllerAvgIoLatencyMsecs=2.86 1641412770000000000
-```
-
-### Node schema
-
-__Schema definition:__
-
-+ Measurement: node
-+ Tag key: jobId
-+ Tag key: clusterId
-+ Tag key: clusterName
-+ Tag key: nodeName
-+ Field key: hypervisorCpuUsagePercent
-+ Field key: hypervisorMemoryUsagePercent
-+ Field key: controllerNumIops
-+ Field key: hypervisor_num_iops
-+ Field key: numIops
-+ Field key: ioBandwidthMBps
-+ Field key: avgIoLatencyMsecs
-
-__Example__
-
-This sample:
-```
-                      Node                   CPU%   MEM%    cIOPs    hIOPs     IOPs  B/W[MB]  LAT[ms]
-2022/01/05-10:00:00   Prolix1               85.88  59.91   163.32    -1.00    62.00     3.01     1.01
-2022/01/05-11:00:00   Prolix1               86.39  59.91   158.04    -1.00    70.00     2.95     1.10
-2022/01/05-12:00:00   Prolix1               86.46  59.92   177.65    -1.00   160.00     5.08     1.14
-```
-
-Translate in this line protocol:
-```
-node,jobId=0,clusterId=20986,clusterName=Prolix,nodeName=Prolix1 hypervisorCpuUsagePercent=85.88,hypervisorMemoryUsagePercent=59.91,controllerNumIops=163.32,hypervisor_num_iops=-1.00,numIops=62.00,ioBandwidthMBps=3.01,avgIoLatencyMsecs=1.01 1641405558000000000
-node,jobId=0,clusterId=20986,clusterName=Prolix,nodeName=Prolix1 hypervisorCpuUsagePercent=86.39,hypervisorMemoryUsagePercent=59.91,controllerNumIops=158.04,hypervisor_num_iops=-1.00,numIops=70.00,ioBandwidthMBps=2.95,avgIoLatencyMsecs=1.10 1641409164000000000
-node,jobId=0,clusterId=20986,clusterName=Prolix,nodeName=Prolix1 hypervisorCpuUsagePercent=86.46,hypervisorMemoryUsagePercent=59.92,controllerNumIops=177.65,hypervisor_num_iops=-1.00,numIops=160.00,ioBandwidthMBps5.08,avgIoLatencyMsecs=1.14 1641412770000000000
+vm,exportId=0,clusterId=20986,clusterName=Prolix,entityId=98765,entityName=harold-ocp-cp-1 hypervisorCpuUsagePercent=24.36,hypervisorCpuReadyTimePercent=15.48,memoryUsagePercent=63.02,controllerNumIops=33,hypervisorNumIops=-1,numIops=-1,controllerIoBandwidthMBps=0.47,controllerAvgIoLatencyMsecs=2.81 1641405558000000000
+vm,exportId=0,clusterId=20986,clusterName=Prolix,entityId=98765,entityName=harold-ocp-cp-1 hypervisorCpuUsagePercent=23.70,hypervisorCpuReadyTimePercent=14.61,memoryUsagePercent=64.03,controllerNumIops=33,hypervisorNumIops=-1,numIops=-1,controllerIoBandwidthMBps=0.45,controllerAvgIoLatencyMsecs=2.79 1641409164000000000
+vm,exportId=0,clusterId=20986,clusterName=Prolix,entityId=98765,entityName=harold-ocp-cp-1 hypervisorCpuUsagePercent=25.24,hypervisorCpuReadyTimePercent=16.87,memoryUsagePercent=61.20,controllerNumIops=34,hypervisorNumIops=-1,numIops=-1,controllerIoBandwidthMBps=0.48,controllerAvgIoLatencyMsecs=2.86 1641412770000000000
 ```
 
 ## Advantages
