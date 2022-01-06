@@ -173,7 +173,7 @@ As for the Reporter classes the relationship between super and sub classes and t
 
 ## Exporter schema definition
 
-For the exporter feature NARF create line protocol files that can be imported to InfluxDB. Each entity type has an schema. All schemas will have the following tags to be able to differentiate the collection and cluster where they come from: _exportId_, _clusterId_ and _clusterName_. Another two common tags _entityId_ and _entityName_ enable the unequivocal identification of each entity. It is through the measurement name that entity type can be identified.
+For the exporter feature NARF create line protocol files that can be imported to InfluxDB. Each entity type has an schema. All schemas have the following tags to be able to differentiate the collection and cluster where they come from: _exportId_, _clusterId_ and _clusterName_. Another two common tags _entityId_ and _entityName_ enable the unequivocal identification of each entity. It is through the measurement name that entity type can be identified.
 
 A datapoint looks like this:
 
@@ -185,7 +185,7 @@ Measurement     Collection and cluster tags                       Entity tags   
 
 ```
 
-This schema has been defined taking in consideration best practices documented here:
+This schema has been defined following best practices documented here:
 
 https://docs.influxdata.com/influxdb/v2.1/write-data/best-practices/schema-design/
 
