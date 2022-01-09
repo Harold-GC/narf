@@ -1011,12 +1011,13 @@ class UiExporter(Ui):
     nodes = self.node_reporter.overall_time_range_report(
       usec_start,usec_end,sort)
     for node in nodes:
+      # Tags in lexicographic order to improve performance at influxDB
       export_file.write("node,"
-        "exportId={export_id},"
         "clusterId={cluster_id},"
         "clusterName={cluster_name},"
         "entityId={n[node_id]},"
-        "entityName={n[node_name]} "
+        "entityName={n[node_name]},"
+        "exportId={export_id} "
         "hypervisorCpuUsagePercent={n[hypervisor_cpu_usage_percent]},"
         "hypervisorMemoryUsagePercent={n[hypervisor_memory_usage_percent]},"
         "controllerNumIops={n[controller_num_iops]},"
@@ -1036,19 +1037,21 @@ class UiExporter(Ui):
   def write_vms_datapoint(self, export_file, start_time, end_time,
                           sort="name", hosts=[]):
     """
-    Get measurements for nodes.
+    Get measurements for VMs.
     """
     usec_start = int(start_time.strftime("%s") + "000000")
     usec_end = int(end_time.strftime("%s") + "000000")
     vms = self.vm_reporter.overall_time_range_report(
       usec_start,usec_end,sort)
     for vm in vms:
+      print(vm["vm_name"].replace(" ","\ "))
+      # Tags in lexicographic order to improve performance at influxDB
       export_file.write("vm,"
-        "exportId={export_id},"
         "clusterId={cluster_id},"
         "clusterName={cluster_name},"
         "entityId={v[vm_id]},"
-        "entityName={v[vm_name]} "
+        "entityName={vm_name},"
+        "exportId={export_id} "
         "hypervisorCpuUsagePercent={v[hypervisor_cpu_usage_percent]},"
         "hypervisorCpuReadyTimePercent={v[hypervisor_cpu_ready_time_percent]},"
         "memoryUsagePercent={v[memory_usage_percent]},"
@@ -1062,6 +1065,7 @@ class UiExporter(Ui):
           cluster_id=self.cluster_reporter.cluster_id,
           cluster_name=self.cluster_reporter.name,
           v=vm,
+          vm_name=vm["vm_name"].replace(" ","\ "),
           time_usec=usec_start)
       )
     return True
