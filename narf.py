@@ -95,6 +95,26 @@ class Reporter(object):
       ret[generic_stat.stat_name] = generic_stat.stat_value
     return ret
 
+  def _get_generic_attribute_dict(self, generic_attribute_list):
+    """
+    Transform generic_attribute_list returned from arithmos into a dictionary.
+    Arithmos returns generic_attribute in the form of:
+
+      generic_attribute_list {
+        attribute_name: "vm_uuid"
+        attribute_value_str: "00c43e1e-33db-4c91-9819-9b2e6f7b6111"
+      }
+
+    This functions transform this into:
+       { "vm_uuid": "00c43e1e-33db-4c91-9819-9b2e6f7b6111" }
+
+    Making it easy to handle by reporters and Ui.
+    """
+    ret = {}
+    for generic_attribute in generic_attribute_list:
+      ret[generic_attribute.attribute_name] = generic_attribute.attribute_value_str
+    return ret
+
   def _zeroed_missing_stats(self, stats, desired_stat_list):
     """
     If an entity is missing an stat in the returned data from arithmos
@@ -297,7 +317,7 @@ class VmReporter(Reporter):
     return entity_list
 
   def overall_live_report(self, sort="name", node_names=[]):
-    field_names=["vm_name", "id",
+    field_names=["vm_name", "id", "node_name",
                  "hypervisor_cpu_usage_ppm",
                  "hypervisor.cpu_ready_time_ppm",
                  "memory_usage_ppm", "controller_num_iops",
@@ -322,18 +342,11 @@ class VmReporter(Reporter):
     all_vms = []
     for vm_stat in stats:
 
-      # Convert stats from Arithmos generic stat format into a dictionary.
-      #
-      # GENERIC STAT FORMAT IS LIKE:
-      # generic_stat_list {
-      #   stat_name: "memory_usage_ppm"
-      #   stat_value: 23030
-      # }
-      #
-      # IT IS TRANSFORMED INTO THIS:
-      #  { "memory_usage_ppm": 23030 }
       generic_stats = self._get_generic_stats_dict(
         vm_stat.stats.generic_stat_list)
+
+      generic_attributes = self._get_generic_attribute_dict(
+        vm_stat.generic_attribute_list)
 
       # List of stats that arithmos return in generic stats format value.
       # It's necessary to explictly know which stats Arithmos return in
@@ -341,7 +354,7 @@ class VmReporter(Reporter):
       generic_stat_names = ["memory_usage_ppm",
                             "hypervisor.cpu_ready_time_ppm"]
 
-      # Lastly, it's necessary to fill with zeros the missing stats.
+      # Fill with -1 the missing stats.
       generic_stats = self._zeroed_missing_stats(generic_stats,
                                                  generic_stat_names)
 
@@ -349,9 +362,9 @@ class VmReporter(Reporter):
       # from Arithmos, so more workarounds like previous one may be needed
       # in the future.
       # Function _zeroed_missing_stats() should work for most cases.
-
       vm = {
 	"vm_name": vm_stat.vm_name,
+        "node_name" : generic_attributes["node_name"],
         "hypervisor_cpu_usage_percent":
           vm_stat.stats.hypervisor_cpu_usage_ppm / 10000,
         "hypervisor_cpu_ready_time_percent":
