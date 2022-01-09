@@ -17,6 +17,7 @@ import time
 import datetime
 import argparse
 import curses
+import uuid
 
 #from stats.arithmos import stats_util
 from util.interfaces.interfaces import NutanixInterfaces
@@ -112,13 +113,41 @@ class Reporter(object):
         stats[desired_stat] = -1
     return stats
 
+class ClusterReporter(Reporter):
+  """Reports for Clusters"""
+
+  def __init__(self):
+    Reporter.__init__(self)
+    self._ARITHMOS_ENTITY_PROTO = ArithmosEntityProto.kCluster
+    self.max_cluster_name_width = 0
+
+    self.cluster = self._get_cluster_live_stats(
+                                           field_name_list=["cluster_name", "id"])
+    self.name = self.cluster[0].cluster_name
+    self.cluster_id = self.cluster[0].id
+
+  def _get_cluster_live_stats(self, sort_criteria=None, filter_criteria=None,
+                           search_term=None, field_name_list=None):
+    response = self._get_live_stats(self._ARITHMOS_ENTITY_PROTO,
+                                    sort_criteria, filter_criteria,
+                                    search_term, field_name_list)
+    entity_list = response.entity_list.cluster
+    return entity_list
+
+  def overall_live_report(self, sort="name"):
+    field_names=["cluster_name", "hypervisor_cpu_usage_ppm",
+                 "hypervisor_memory_usage_ppm", "hypervisor_num_iops",
+                 "controller_num_iops", "num_iops",
+                 "avg_io_latency_usecs", "io_bandwidth_kBps"]
+
+    pass
   
 class NodeReporter(Reporter):
   """Reports for Nodes"""
 
   def __init__(self):
     Reporter.__init__(self)
-    self._ARITHMOS_ENTITY_PROTO = ArithmosEntityProto.kNode    
+    self._ARITHMOS_ENTITY_PROTO = ArithmosEntityProto.kNode
     self.max_node_name_width = 0
 
     self.sort_conversion = {
@@ -129,10 +158,10 @@ class NodeReporter(Reporter):
       "bw": "io_bandwidth_mBps",
       "lat" : "avg_io_latency_msecs"
     }
-    
+
     self.nodes = self._get_node_live_stats(sort_criteria="node_name",
                                            field_name_list=["node_name", "id"])
-    
+
   def _get_node_live_stats(self, sort_criteria=None, filter_criteria=None,
                            search_term=None, field_name_list=None):
     response = self._get_live_stats(self._ARITHMOS_ENTITY_PROTO,
@@ -140,9 +169,9 @@ class NodeReporter(Reporter):
                                     search_term, field_name_list)
     entity_list = response.entity_list.node
     return entity_list
-      
+
   def overall_live_report(self, sort="name"):
-    field_names=["node_name", "hypervisor_cpu_usage_ppm",
+    field_names=["node_name", "id", "hypervisor_cpu_usage_ppm",
                  "hypervisor_memory_usage_ppm", "hypervisor_num_iops",
                  "controller_num_iops", "num_iops",
                  "avg_io_latency_usecs", "io_bandwidth_kBps"]
@@ -160,6 +189,7 @@ class NodeReporter(Reporter):
     for node_stat in stats:
       node = {
 	"node_name": node_stat.node_name,
+        "node_id": node_stat.id,
         "hypervisor_cpu_usage_percent":
           node_stat.stats.hypervisor_cpu_usage_ppm / 10000,
         "hypervisor_memory_usage_percent":
@@ -201,6 +231,7 @@ class NodeReporter(Reporter):
     for node in self.nodes:
       node_stats = {
         "node_name": node.node_name,
+        "node_id": node.id,
         "hypervisor_cpu_usage_percent":
           self._get_time_range_stat_average(
             node.id, "hypervisor_cpu_usage_ppm", start, end,
@@ -266,7 +297,7 @@ class VmReporter(Reporter):
     return entity_list
 
   def overall_live_report(self, sort="name", node_names=[]):
-    field_names=["vm_name",
+    field_names=["vm_name", "id",
                  "hypervisor_cpu_usage_ppm",
                  "hypervisor.cpu_ready_time_ppm",
                  "memory_usage_ppm", "controller_num_iops",
@@ -390,6 +421,7 @@ class VmReporter(Reporter):
 
       vm = {
 	"vm_name": vm.vm_name,
+        "vm_id": vm.id,
         "hypervisor_cpu_usage_percent":
           self._get_time_range_stat_average(
             vm.id, "hypervisor_cpu_usage_ppm", start, end,
@@ -434,8 +466,49 @@ class Ui(object):
   """Display base"""
 
   def __init__(self):
+    self.cluster_reporter = ClusterReporter()
     self.node_reporter = NodeReporter()
     self.vm_reporter = VmReporter()
+    self.UiUuid = uuid.uuid1()
+
+  def time_validator(self, start_time, end_time,
+                              sec=None):
+    """
+    Check start_time, end_time and sec are valid. Returns sec or a valid
+    value for sec if possible, if there is no valid value for sec returns -1.
+    """
+    if start_time >= end_time:
+      parser.print_usage()
+      print("ERROR: Invalid date: Start time must be before end time")
+      return -1
+
+    if ((end_time - start_time ).days < 1
+        and (end_time - start_time ).seconds < 30):
+      parser.print_usage()
+      print("ERROR: Invalid dates: difference between start and "
+        "end is less than 30 seconds.\n"
+        "       Minimum time difference for historic report is 30 seconds.")
+      return -1
+    elif not sec:
+      print("INFO: Not interval indicated, setting "
+            "interval to 60 seconds.")
+      sec = 60
+    elif sec < 30:
+      print("INFO: Invalid interval: minimum value 30 seconds for "
+            "historic report. \n"
+            "      Setting interval to 30 seconds.")
+      sec = 30
+
+    delta_time = start_time + datetime.timedelta(seconds=sec)
+    if delta_time > end_time:
+      sec = int(end_time.strftime("%s")) - int(start_time.strftime("%s"))
+      print("INFO: Invalid interval: greater than the difference "
+            "between start and end time.\n"
+            "      Setting interval to difference between start and end."
+            " Interval = " + str(sec))
+      return sec
+    return sec
+
     
 class UiCli(Ui):
   """CLI interface"""
@@ -925,7 +998,96 @@ class UiInteractive(Ui):
       time.sleep(2)
       self.key = self.stdscr.getch()
 
+
+class UiExporter(Ui):
+
+  def write_node_datapoint(self, export_file, start_time, end_time,
+                           sort="name", hosts=[]):
+    """
+    Get measurements for nodes.
+    """
+    usec_start = int(start_time.strftime("%s") + "000000")
+    usec_end = int(end_time.strftime("%s") + "000000")
+    nodes = self.node_reporter.overall_time_range_report(
+      usec_start,usec_end,sort)
+    for node in nodes:
+      export_file.write("node,"
+        "exportId={export_id},"
+        "clusterId={cluster_id},"
+        "clusterName={cluster_name},"
+        "entityId={n[node_id]},"
+        "entityName={n[node_name]} "
+        "hypervisorCpuUsagePercent={n[hypervisor_cpu_usage_percent]},"
+        "hypervisorMemoryUsagePercent={n[hypervisor_memory_usage_percent]},"
+        "controllerNumIops={n[controller_num_iops]},"
+        "hypervisorNumIops={n[hypervisor_num_iops]},"
+        "numIops={n[num_iops]},"
+        "ioBandwidthMBps={n[io_bandwidth_mBps]},"
+        "avgIoLatencyMsecs={n[avg_io_latency_msecs]} "
+        "{time_usec}\n"
+        .format(export_id=self.UiUuid,
+          cluster_id=self.cluster_reporter.cluster_id,
+          cluster_name=self.cluster_reporter.name,
+          n=node,
+          time_usec=usec_start)
+      )
+    return True
+
+  def write_vms_datapoint(self, export_file, start_time, end_time,
+                          sort="name", hosts=[]):
+    """
+    Get measurements for nodes.
+    """
+    usec_start = int(start_time.strftime("%s") + "000000")
+    usec_end = int(end_time.strftime("%s") + "000000")
+    vms = self.vm_reporter.overall_time_range_report(
+      usec_start,usec_end,sort)
+    for vm in vms:
+      export_file.write("vm,"
+        "exportId={export_id},"
+        "clusterId={cluster_id},"
+        "clusterName={cluster_name},"
+        "entityId={v[vm_id]},"
+        "entityName={v[vm_name]} "
+        "hypervisorCpuUsagePercent={v[hypervisor_cpu_usage_percent]},"
+        "hypervisorCpuReadyTimePercent={v[hypervisor_cpu_ready_time_percent]},"
+        "memoryUsagePercent={v[memory_usage_percent]},"
+        "controllerNumIops={v[controller_num_iops]},"
+        "hypervisorNumIops={v[hypervisor_num_iops]},"
+        "numIops={v[num_iops]},"
+        "controllerIoBandwidth_MBps={v[controller_io_bandwidth_mBps]},"
+        "controllerAvgIoLatency_msecs={v[controller_avg_io_latency_msecs]} "
+        "{time_usec}\n"
+        .format(export_id=self.UiUuid,
+          cluster_id=self.cluster_reporter.cluster_id,
+          cluster_name=self.cluster_reporter.name,
+          v=vm,
+          time_usec=usec_start)
+      )
+    return True
       
+  def export_data(self, start_time, end_time, sec=None, sort="name", nodes=[]):
+    """
+    Generate a report file.
+    """
+    sec = self.time_validator(start_time, end_time, sec)
+    if sec > -1:
+      export_file = open("narf.dat", "a")
+      step_time = start_time
+      delta_time = start_time + datetime.timedelta(seconds=sec)
+      print("INFO: Exporting datapoints...")
+      while step_time < end_time:
+        self.write_node_datapoint(export_file, step_time, delta_time,
+                                  sort, nodes)
+        self.write_vms_datapoint(export_file, step_time, delta_time,
+                                 sort, nodes)
+        step_time = delta_time
+        delta_time += datetime.timedelta(seconds=sec)
+      export_file.close()
+      print("INFO: Export completed.")
+    return True
+
+
 def valid_date(date_string):
   try:
     return datetime.datetime.strptime(date_string, "%Y/%m/%d-%H:%M:%S")
@@ -961,7 +1123,9 @@ if __name__ == "__main__":
     parser.add_argument( "-end-time", "-E", 
                          help="End time in format YYYY/MM/DD-hh:mm:ss. "
                                "Specified in local time",
-                         type=valid_date)    
+                         type=valid_date)
+    parser.add_argument('--export', '-e', action='store_true',
+                        help="Export data to files in line protocol")
     parser.add_argument('--test', '-t', action='store_true',
                         help="Place holder for testing new features")    
     parser.add_argument('sec', type=int, nargs="?", default=None,
@@ -1014,17 +1178,17 @@ if __name__ == "__main__":
       except KeyboardInterrupt:
         print("Zort!")
         exit(0)
-      
+
+    elif args.export:
+      if args.start_time and args.end_time:
+        ui_exporter = UiExporter()
+        ui_exporter.export_data(args.start_time, args.end_time, args.sec)
+      else:
+        parser.print_usage()
+        print("ERROR: Invalid date: Arguments --start-time and"
+              " --end-time needed by --export argument.")
     elif args.test:
       print("==== TESTING ====")
-      #vm_reporter = VmReporter()
-      #vm_reporter.test_data_processing()
-
-      node_reporter = NodeReporter()
-      #print(datetime.datetime.strptime("2022/01/01-12:00:00", "%Y/%m/%d-%H:%M:%S"))
-      #print(args.start_time.strftime('%s'))
-      ui_cli = UiCli()
-      ui_cli.nodes_time_range_report(args.start_time,args.end_time,"foo")
       
     else:
       ui_interactive = UiInteractive()
