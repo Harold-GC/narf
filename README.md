@@ -229,11 +229,12 @@ node,exportId=0,clusterId=20986,clusterName=Prolix,entityId=1234,entityName=Prol
 __Schema definition:__
 
 - Measurement: vm
-- Tag key: exportId
 - Tag key: clusterId
 - Tag key: clusterName
 - tag key: entityId
 - Tag key: entityName
+- Tag key: exportId
+- Tag key: nodeName
 - Field key: hypervisorCpuUsagePercent
 - Field key: hypervisorCpuReadyTimePercent
 - Field key: memoryUsagePercent
@@ -255,9 +256,9 @@ This sample:
 
 Translate in this line protocol:
 ```
-vm,exportId=0,clusterId=20986,clusterName=Prolix,entityId=98765,entityName=harold-ocp-cp-1 hypervisorCpuUsagePercent=24.36,hypervisorCpuReadyTimePercent=15.48,memoryUsagePercent=63.02,controllerNumIops=33,hypervisorNumIops=-1,numIops=-1,controllerIoBandwidthMBps=0.47,controllerAvgIoLatencyMsecs=2.81 1641405558000000000
-vm,exportId=0,clusterId=20986,clusterName=Prolix,entityId=98765,entityName=harold-ocp-cp-1 hypervisorCpuUsagePercent=23.70,hypervisorCpuReadyTimePercent=14.61,memoryUsagePercent=64.03,controllerNumIops=33,hypervisorNumIops=-1,numIops=-1,controllerIoBandwidthMBps=0.45,controllerAvgIoLatencyMsecs=2.79 1641409164000000000
-vm,exportId=0,clusterId=20986,clusterName=Prolix,entityId=98765,entityName=harold-ocp-cp-1 hypervisorCpuUsagePercent=25.24,hypervisorCpuReadyTimePercent=16.87,memoryUsagePercent=61.20,controllerNumIops=34,hypervisorNumIops=-1,numIops=-1,controllerIoBandwidthMBps=0.48,controllerAvgIoLatencyMsecs=2.86 1641412770000000000
+vm,clusterId=20986,clusterName=Prolix,entityId=98765,entityName=harold-ocp-cp-1,exportId=0,nodeName=Prolix1 hypervisorCpuUsagePercent=24.36,hypervisorCpuReadyTimePercent=15.48,memoryUsagePercent=63.02,controllerNumIops=33,hypervisorNumIops=-1,numIops=-1,controllerIoBandwidthMBps=0.47,controllerAvgIoLatencyMsecs=2.81 1641405558000000000
+vm,clusterId=20986,clusterName=Prolix,entityId=98765,entityName=harold-ocp-cp-1,exportId=0,nodeName=Prolix1 hypervisorCpuUsagePercent=23.70,hypervisorCpuReadyTimePercent=14.61,memoryUsagePercent=64.03,controllerNumIops=33,hypervisorNumIops=-1,numIops=-1,controllerIoBandwidthMBps=0.45,controllerAvgIoLatencyMsecs=2.79 1641409164000000000
+vm,clusterId=20986,clusterName=Prolix,entityId=98765,entityName=harold-ocp-cp-1,exportId=0,nodeName=Prolix1 hypervisorCpuUsagePercent=25.24,hypervisorCpuReadyTimePercent=16.87,memoryUsagePercent=61.20,controllerNumIops=34,hypervisorNumIops=-1,numIops=-1,controllerIoBandwidthMBps=0.48,controllerAvgIoLatencyMsecs=2.86 1641412770000000000
 ```
 
 ## Advantages
