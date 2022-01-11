@@ -95,6 +95,24 @@ class Reporter(object):
       ret[generic_stat.stat_name] = generic_stat.stat_value
     return ret
 
+  def _zeroed_missing_stats(self, stats, desired_stat_list):
+    """
+    If an entity is missing an stat in the returned data from arithmos
+    then it's necessary to fill the missing information to fill the
+    fields when it's displayed by the Ui.
+
+    This function takes an actual list of stats and a list of desired
+    stats. If a stat in the desired list is missing from the stat list
+    then it add it with a value of 0 and returns a new list.
+
+    TODO: There may be a better way to do this.
+          Review if this is valid.
+    """
+    for desired_stat in desired_stat_list:
+      if desired_stat not in stats:
+        stats[desired_stat] = -1
+    return stats
+
   def _get_generic_attribute_dict(self, generic_attribute_list):
     """
     Transform generic_attribute_list returned from arithmos into a dictionary.
@@ -112,26 +130,28 @@ class Reporter(object):
     """
     ret = {}
     for generic_attribute in generic_attribute_list:
-      ret[generic_attribute.attribute_name] = generic_attribute.attribute_value_str
+      ret[generic_attribute.attribute_name] = \
+        generic_attribute.attribute_value_str
     return ret
 
-  def _zeroed_missing_stats(self, stats, desired_stat_list):
+  def _zeroed_missing_attribute(self, attributes, desired_attribute_list):
     """
-    If an entity is missing an stat in the returned data from arithmos
+    If an entity is missing an attribute in the returned data from arithmos
     then it's necessary to fill the missing information to fill the
     fields when it's displayed by the Ui.
 
-    This function takes an actual list of stats and a list of desired
-    stats. If a stat in the desired list is missing from the stat list
-    then it add it with a value of 0 and returns a new list.
+    This function takes an actual list of attributes and a list of desired
+    attributes. If a attribute in the desired list is missing from the attribute list
+    then it add it with a value of "-" and returns a new list.
 
     TODO: There may be a better way to do this. 
           Review if this is valid.
     """
-    for desired_stat in desired_stat_list:
-      if desired_stat not in stats:
-        stats[desired_stat] = -1
-    return stats
+    for desired_attribute in desired_attribute_list:
+      if desired_attribute not in attributes:
+        attributes[desired_attribute] = "-"
+    return attributes
+
 
 class ClusterReporter(Reporter):
   """Reports for Clusters"""
@@ -142,7 +162,7 @@ class ClusterReporter(Reporter):
     self.max_cluster_name_width = 0
 
     self.cluster = self._get_cluster_live_stats(
-                                           field_name_list=["cluster_name", "id"])
+                          field_name_list=["cluster_name", "id"])
     self.name = self.cluster[0].cluster_name
     self.cluster_id = self.cluster[0].id
 
@@ -342,21 +362,21 @@ class VmReporter(Reporter):
     all_vms = []
     for vm_stat in stats:
 
+      # Convert a known list of generic_stats into a dictionary
       generic_stats = self._get_generic_stats_dict(
         vm_stat.stats.generic_stat_list)
-
-      generic_attributes = self._get_generic_attribute_dict(
-        vm_stat.generic_attribute_list)
-
-      # List of stats that arithmos return in generic stats format value.
-      # It's necessary to explictly know which stats Arithmos return in
-      # generic stat format.
       generic_stat_names = ["memory_usage_ppm",
                             "hypervisor.cpu_ready_time_ppm"]
-
-      # Fill with -1 the missing stats.
       generic_stats = self._zeroed_missing_stats(generic_stats,
                                                  generic_stat_names)
+
+
+      # Convert a known list of generic_attributes into a dictionary
+      generic_attributes = self._get_generic_attribute_dict(
+        vm_stat.generic_attribute_list)
+      generic_attribute_names = ["node_name"]
+      generic_attributes = self._zeroed_missing_attribute(generic_attributes,
+                                                     generic_attribute_names)
 
       # I don't know which other stats might be missing from the data returned
       # from Arithmos, so more workarounds like previous one may be needed
@@ -421,20 +441,24 @@ class VmReporter(Reporter):
       filter_by = ",".join(["node_name==" + node_name
                                  for node_name in node_names])
 
-    vm_list = self._get_vm_live_stats(field_name_list=["vm_name","id"],
+    vm_list = self._get_vm_live_stats(field_name_list=["vm_name","id",
+                                                       "node_name"],
                                       filter_criteria=filter_by)
+    generic_attribute_names = ["node_name"]
 
     sampling_interval=30
     all_vms = []
     for vm in vm_list:
-      # I don't know which other stats might be missing from the data returned
-      # from Arithmos, so more workarounds like previous one may be needed
-      # in the future.
-      # Function _zeroed_missing_stats() should work for most cases.
+      # Convert a known list of generic_attributes into a dictionary
+      generic_attributes = self._get_generic_attribute_dict(
+        vm.generic_attribute_list)
+      generic_attributes = self._zeroed_missing_attribute(generic_attributes,
+                                                     generic_attribute_names)
 
       vm = {
 	"vm_name": vm.vm_name,
         "vm_id": vm.id,
+        "node_name" : generic_attributes["node_name"],
         "hypervisor_cpu_usage_percent":
           self._get_time_range_stat_average(
             vm.id, "hypervisor_cpu_usage_ppm", start, end,
@@ -712,9 +736,9 @@ class UiCli(Ui):
             "{v[hypervisor_cpu_usage_percent]:>6.2f} "
             "{v[hypervisor_cpu_ready_time_percent]:>6.2f} "
             "{v[memory_usage_percent]:>6.2f} "
-            "{v[controller_num_iops]:>6} "
-            "{v[hypervisor_num_iops]:>6} "
-            "{v[num_iops]:>6} "
+            "{v[controller_num_iops]:>6.0f} "
+            "{v[hypervisor_num_iops]:>6.0f} "
+            "{v[num_iops]:>6.0f} "
             "{v[controller_io_bandwidth_mBps]:>8.2f} "
             "{v[controller_avg_io_latency_msecs]:>8.2f} "
             .format(time=start_time.strftime("%Y/%m/%d-%H:%M:%S"),
@@ -1014,11 +1038,23 @@ class UiInteractive(Ui):
 
 class UiExporter(Ui):
 
+  def __init__(self):
+    """
+    TODO:
+      + Find a better way to get Y for pads, the use of overall_live_report()
+        is an unnecessary call to arithmos.
+    """
+    Ui.__init__(self)
+    self.export_file = "narf.{}.line".format(self.UiUuid)
+
+
   def write_node_datapoint(self, export_file, start_time, end_time,
                            sort="name", hosts=[]):
     """
     Get measurements for nodes.
     """
+    export_file.write("# Nodes datapoints for interval {}\n"
+                      .format(start_time.strftime("%Y/%m/%d-%H:%M:%S")))
     usec_start = int(start_time.strftime("%s") + "000000")
     usec_end = int(end_time.strftime("%s") + "000000")
     nodes = self.node_reporter.overall_time_range_report(
@@ -1031,13 +1067,13 @@ class UiExporter(Ui):
         "entityId={n[node_id]},"
         "entityName={n[node_name]},"
         "exportId={export_id} "
-        "hypervisorCpuUsagePercent={n[hypervisor_cpu_usage_percent]},"
-        "hypervisorMemoryUsagePercent={n[hypervisor_memory_usage_percent]},"
-        "controllerNumIops={n[controller_num_iops]},"
-        "hypervisorNumIops={n[hypervisor_num_iops]},"
-        "numIops={n[num_iops]},"
-        "ioBandwidthMBps={n[io_bandwidth_mBps]},"
-        "avgIoLatencyMsecs={n[avg_io_latency_msecs]} "
+        "hypervisorCpuUsagePercent={n[hypervisor_cpu_usage_percent]:.2f},"
+        "hypervisorMemoryUsagePercent={n[hypervisor_memory_usage_percent]:.2f},"
+        "controllerNumIops={n[controller_num_iops]:.0f},"
+        "hypervisorNumIops={n[hypervisor_num_iops]:.0f},"
+        "numIops={n[num_iops]:.0f},"
+        "ioBandwidthMBps={n[io_bandwidth_mBps]:.2f},"
+        "avgIoLatencyMsecs={n[avg_io_latency_msecs]:.2f} "
         "{time_usec}\n"
         .format(export_id=self.UiUuid,
           cluster_id=self.cluster_reporter.cluster_id,
@@ -1052,27 +1088,29 @@ class UiExporter(Ui):
     """
     Get measurements for VMs.
     """
+    export_file.write("# VMs datapoints for interval {}\n"
+                      .format(start_time.strftime("%Y/%m/%d-%H:%M:%S")))
     usec_start = int(start_time.strftime("%s") + "000000")
     usec_end = int(end_time.strftime("%s") + "000000")
     vms = self.vm_reporter.overall_time_range_report(
       usec_start,usec_end,sort)
     for vm in vms:
-      print(vm["vm_name"].replace(" ","\ "))
       # Tags in lexicographic order to improve performance at influxDB
       export_file.write("vm,"
         "clusterId={cluster_id},"
         "clusterName={cluster_name},"
         "entityId={v[vm_id]},"
         "entityName={vm_name},"
-        "exportId={export_id} "
-        "hypervisorCpuUsagePercent={v[hypervisor_cpu_usage_percent]},"
-        "hypervisorCpuReadyTimePercent={v[hypervisor_cpu_ready_time_percent]},"
-        "memoryUsagePercent={v[memory_usage_percent]},"
-        "controllerNumIops={v[controller_num_iops]},"
-        "hypervisorNumIops={v[hypervisor_num_iops]},"
-        "numIops={v[num_iops]},"
-        "controllerIoBandwidth_MBps={v[controller_io_bandwidth_mBps]},"
-        "controllerAvgIoLatency_msecs={v[controller_avg_io_latency_msecs]} "
+        "exportId={export_id},"
+        "nodeName={v[node_name]} "
+        "hypervisorCpuUsagePercent={v[hypervisor_cpu_usage_percent]:.2f},"
+        "hypervisorCpuReadyTimePercent={v[hypervisor_cpu_ready_time_percent]:.2f},"
+        "memoryUsagePercent={v[memory_usage_percent]:.2f},"
+        "controllerNumIops={v[controller_num_iops]:.0f},"
+        "hypervisorNumIops={v[hypervisor_num_iops]:.0f},"
+        "numIops={v[num_iops]:.0f},"
+        "controllerIoBandwidth_MBps={v[controller_io_bandwidth_mBps]:.2f},"
+        "controllerAvgIoLatency_msecs={v[controller_avg_io_latency_msecs]:.2f} "
         "{time_usec}\n"
         .format(export_id=self.UiUuid,
           cluster_id=self.cluster_reporter.cluster_id,
@@ -1089,11 +1127,15 @@ class UiExporter(Ui):
     """
     sec = self.time_validator(start_time, end_time, sec)
     if sec > -1:
-      export_file = open("narf.dat", "a")
+      export_file = open(self.export_file, "a")
       step_time = start_time
       delta_time = start_time + datetime.timedelta(seconds=sec)
-      print("INFO: Exporting datapoints...")
+      print("INFO: Exporting datapoints. Collection ID: {}."
+            .format(self.UiUuid))
+      print("INFO: Export file: {}".format(self.export_file))
       while step_time < end_time:
+        print("INFO: Collecting datapoints for interval {}"
+              .format(step_time.strftime("%Y/%m/%d-%H:%M:%S")))
         self.write_node_datapoint(export_file, step_time, delta_time,
                                   sort, nodes)
         self.write_vms_datapoint(export_file, step_time, delta_time,
