@@ -171,7 +171,7 @@ nutanix@NTNX-CVM:10.66.38.142:~/tmp$ ./narf.py -vs lat -N prolix1 -S 2022/01/01-
 
 ### Interactive mode (top like interface)
 
-<img src="https://user-images.githubusercontent.com/52970459/147422400-2ced603b-d3b1-49ed-a6dd-4068668d2308.jpg" alt="narf_interactive" style="width: 550px;">
+<img src="https://user-images.githubusercontent.com/52970459/149036673-bd397213-575b-49d3-86a1-2f69cd272348.jpg" alt="narf_interactive" style="width: 550px;">
 
 ## Design
 
