@@ -284,31 +284,32 @@ Splitting tasks/features according to each interface, some taks intertwine betwe
   - [ ] VM specific report - implement a pad with VM cpu/rdy/mem/controller iops, etc, plus vDisks.
   - [ ] Add capability to change refresh rate.
 - Data exporter - Time range report, to be able to query historical data and export to files.
-  - [ ] Nodes time range report
-  - [ ] VM time range report
-  - [ ] Define and implement export files. Probably in JSON format. 
+  - [ ] Zort 
 
 
 ### In Progress
 - CLI interface - Eveything for inLine outputs
-  - [ ] Zort
+  - [ ] Add read/write fields for lat,bw and iops. Maybe and extended report option?
 - Interactive interface - top like interface
-  - [ ] Add CPU ready time to overall VM report.
-  - [ ] Sort VMs
+  - [ ] Add the hability to filter VMs by hosts. With tab key.
 - Data exporter - Time range report, to be able to query historical data and export to files.
-  - [ ] Zort
+  - [ ] Work on InfluxDB queries.
 
 ### Done ✓
 - CLI interface - Eveything for inLine outputs
-  - [X] Display only running VMs.
+  - [X] Display only running VMs. Dec 28, 2021
   - [x] CLI sort node and vm report by cpu, mem, etc @harold Dec 26, 2021
   - [x] CLI vm report @harold Dec 25, 2021
   - [x] CLI node report @harold Dec 17, 2021
 - Interactive interface - top like interface
   - [X] Add VM list @harold Dec 27, 2021
   - [x] Node CPU graph @harold Dec 19, 2021
+  - [X] Sort VMs @harold Dec 28, 2021
+  - [X] Add CPU ready time to overall VM report @harold Dec 29, 2021
 - Data exporter - Time range report, to be able to query historical data and export to files.
-  - [x] Zort
+  - [X] Nodes time range report @harold Jan 9, 2022
+  - [X] VM time range report @harold Jan 9, 2022
+  - [X] Define export files in line protocol format @harold Jan 9, 2022
 
 ## Why narf?
 I had almost decided to change the name from `sre_perf` to `nar` for a while, to make it sound more UNIX like (I thougth about `nstat` but that's already in use), then one day it start lingering in my head as `narf`, that's when I remembered about _Pinky and The Brain_... the sound "_just say narf_" is some sort of "_jacuna matata_" from Pinky, the reflection of The Brain just before the song is quite cliche but I still believe with a deep meaning.
