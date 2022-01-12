@@ -309,6 +309,7 @@ Splitting tasks/features according to each interface, some taks intertwine betwe
 
 ### Done ✓
 - CLI interface - Eveything for inLine outputs
+  - [X] Makes refresh based on timestamp instead of sleep time @harold Jan 13, 2022
   - [X] Display only running VMs. Dec 28, 2021
   - [x] CLI sort node and vm report by cpu, mem, etc @harold Dec 26, 2021
   - [x] CLI vm report @harold Dec 25, 2021
