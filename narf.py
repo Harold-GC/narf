@@ -894,7 +894,6 @@ class UiInteractive(Ui):
     def render_nodes_cpu_pad(self, y, x):
         self.stdscr.noutrefresh()
         pad_size_y, pad_size_x = self.nodes_cpu_pad.getmaxyx()
-        self.nodes_sort = self.get_nodes_sort_label(self.key)
 
         self.nodes_cpu_pad.attron(curses.A_BOLD)
         self.nodes_cpu_pad.addstr(0, 3, " Nodes CPU ")
@@ -929,7 +928,6 @@ class UiInteractive(Ui):
     def render_nodes_io_pad(self, y, x):
         self.stdscr.noutrefresh()
         pad_size_y, pad_size_x = self.nodes_cpu_pad.getmaxyx()
-        self.nodes_sort = self.get_nodes_sort_label(self.key)
 
         self.nodes_io_pad.attron(curses.A_BOLD)
         self.nodes_io_pad.addstr(0, 3, " Nodes IOPs ")
@@ -969,7 +967,6 @@ class UiInteractive(Ui):
     def render_vm_overall_pad(self, y, x):
         self.stdscr.noutrefresh()
         pad_size_y, pad_size_x = self.vm_overall_pad.getmaxyx()
-        self.vm_sort = self.get_vm_sort_label(self.key)
 
         self.vm_overall_pad.attron(curses.A_BOLD)
         self.vm_overall_pad.addstr(0, 3, " Overall VMs ")
@@ -1019,41 +1016,48 @@ class UiInteractive(Ui):
         # Set invisible cursor
         curses.curs_set(0)
 
+        refresh_time = datetime.datetime.now() - datetime.timedelta(0, 2)
         while (self.key != ord('q')):
 
-            current_y_position = 2
-
-            # Initialization
-            self.stdscr.clear()
-            self.height, self.width = stdscr.getmaxyx()
-            self.stdscr.border()
-
-            self.render_header()
-
-            # Display nodes pad
-            if current_y_position < self.height:
-                self.toggle_nodes_pad(self.key)
-                if self.nodes_pad == "cpu":
-                    current_y_position = self.render_nodes_cpu_pad(
-                        current_y_position, 1)
-                elif self.nodes_pad == "iops":
-                    current_y_position = self.render_nodes_io_pad(
-                        current_y_position, 1)
-
-            # Display VMs pad
-            if current_y_position < self.height - 2:
-                current_y_position = self.render_vm_overall_pad(
-                    current_y_position, 1)
-
-            # Refresh the screen
-            self.stdscr.noutrefresh()
-
-            # Stage all updates
-            curses.doupdate()
-
-            # Wait for next input
-            time.sleep(2)
+            # TODO: Move all key handling to a separate method.
             self.key = self.stdscr.getch()
+            self.nodes_sort = self.get_nodes_sort_label(self.key)
+            self.vm_sort = self.get_vm_sort_label(self.key)
+            self.toggle_nodes_pad(self.key)
+
+            if refresh_time < datetime.datetime.now() or self.key != -1:
+                current_y_position = 2
+
+                # Initialization
+                self.stdscr.clear()
+                self.height, self.width = stdscr.getmaxyx()
+                self.stdscr.border()
+
+                self.render_header()
+
+                # Display nodes pad
+                if current_y_position < self.height:
+                    if self.nodes_pad == "cpu":
+                        current_y_position = self.render_nodes_cpu_pad(
+                            current_y_position, 1)
+                    elif self.nodes_pad == "iops":
+                        current_y_position = self.render_nodes_io_pad(
+                            current_y_position, 1)
+
+                # Display VMs pad
+                if current_y_position < self.height - 2:
+                    current_y_position = self.render_vm_overall_pad(
+                        current_y_position, 1)
+
+                # Refresh the screen
+                self.stdscr.noutrefresh()
+
+                # Stage all updates
+                curses.doupdate()
+
+                # Calculate time for next screen refresh.
+                # TODO: Enable hability to change refresh rate.
+                refresh_time = datetime.datetime.now() + datetime.timedelta(0, 3)
 
 
 class UiExporter(Ui):
