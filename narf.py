@@ -797,6 +797,7 @@ class UiInteractive(Ui):
         self.MAGENTA = 5
         self.CYAN = 6
         self.WHITE_BLACK = 7
+        self.BLACK_WHITE = 8
 
         # Start colors in curses
         curses.start_color()
@@ -929,6 +930,7 @@ class UiInteractive(Ui):
                                   .format(self.nodes_sort))
 
         self.nodes_cpu_pad.attron(curses.A_BOLD)
+
         self.nodes_cpu_pad.addstr(1, 1, "{0:<20} {1:>6} {2:>6}|{3:50}"
                                   .format("Name",
                                           "MEM%",
