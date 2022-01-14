@@ -28,7 +28,7 @@ from serviceability.interface.analytics.arithmos_rpc_client import (
     ArithmosDataProcessing)  # noqa: E402
 
 
-#from stats.arithmos import stats_util
+# from stats.arithmos import stats_util
 
 
 class Reporter(object):
@@ -147,7 +147,7 @@ class Reporter(object):
         attributes. If a attribute in the desired list is missing from the attribute list
         then it add it with a value of "-" and returns a new list.
 
-        TODO: There may be a better way to do this. 
+        TODO: There may be a better way to do this.
               Review if this is valid.
         """
         for desired_attribute in desired_attribute_list:
@@ -432,7 +432,7 @@ class VmReporter(Reporter):
         #       was running during time period of the report.
         #
         # Following code filter by running VMs:
-        #filter_by = "power_state==on"
+        # filter_by = "power_state==on"
         # if node_names:
         #  node_names_str = ",".join(["node_name==" + node_name
         #                             for node_name in node_names])
@@ -761,6 +761,7 @@ class UiInteractive(Ui):
             is an unnecessary call to arithmos.
         """
         Ui.__init__(self)
+
         self.stdscr = curses.initscr()
 
         self.nodes_cpu_pad = curses.newpad(
@@ -782,6 +783,8 @@ class UiInteractive(Ui):
         self.vm_sort = "cpu"
         self.nodes_sort = "name"
         self.nodes_pad = "cpu"
+        self.nodes = []
+        self.active_node = None
         self.height = 0
         self.width = 0
 
@@ -806,6 +809,8 @@ class UiInteractive(Ui):
         curses.init_pair(self.CYAN, curses.COLOR_CYAN, -1)
         curses.init_pair(self.WHITE_BLACK, curses.COLOR_WHITE,
                          curses.COLOR_BLACK)
+        curses.init_pair(self.BLACK_WHITE, curses.COLOR_BLACK,
+                         curses.COLOR_WHITE)
 
     def initialize_strings(self):
         """
@@ -821,10 +826,10 @@ class UiInteractive(Ui):
         """
         It safely display a pad without going beyond window boundaries.
         Avoid to crash if window is resized.
-        TODO: 
+        TODO:
           + For the time being it assume the pad is displayed from 0, 0
             pad position. This means it will always receive pad_min_y
-            and pad_min_x with 0 value. Other values may make this 
+            and pad_min_x with 0 value. Other values may make this
             function to crash.
         """
         main_screen_max_absolute_y = screen_y + pad_desired_height
@@ -877,6 +882,27 @@ class UiInteractive(Ui):
             elif self.nodes_pad == "iops":
                 self.nodes_pad = "cpu"
 
+    def toggle_active_node(self, toggle_key):
+        if toggle_key == ord('\t'):
+            for i in range(0, len(self.nodes)):
+                node = self.nodes[i]
+                if not self.active_node:
+                    self.active_node = node["node_name"]
+                    return
+                elif i == len(self.nodes) - 1 and node["node_name"] == self.active_node:
+                    self.active_node = None
+                    return
+                elif node["node_name"] == self.active_node:
+                    self.active_node = self.nodes[i + 1]["node_name"]
+                    return
+
+    def handle_key_press(self):
+        self.key = self.stdscr.getch()
+        self.nodes_sort = self.get_nodes_sort_label(self.key)
+        self.vm_sort = self.get_vm_sort_label(self.key)
+        self.toggle_nodes_pad(self.key)
+        self.toggle_active_node(self.key)
+
     def render_header(self):
         # Turning on attributes for title
         self.stdscr.attron(curses.color_pair(self.RED))
@@ -911,15 +937,23 @@ class UiInteractive(Ui):
 
         self.nodes_cpu_pad.attroff(curses.A_BOLD)
 
-        nodes = self.node_reporter.overall_live_report(self.nodes_sort)
-        for i in range(0, len(nodes)):
-            node = nodes[i]
+        self.nodes = self.node_reporter.overall_live_report(self.nodes_sort)
+        for i in range(0, len(self.nodes)):
+            node = self.nodes[i]
             rangex = int(0.5 * node["hypervisor_cpu_usage_percent"])
+
+            if node["node_name"] == self.active_node:
+                self.nodes_cpu_pad.attron(curses.color_pair(self.BLACK_WHITE))
+                self.nodes_cpu_pad.attron(curses.A_BOLD)
+
             self.nodes_cpu_pad.addstr(i + 2, 1, "{0:<20} {1:>6.2f} {2:>6.2f}|{3:50}"
                                       .format(node["node_name"][:20],
                                               node["hypervisor_memory_usage_percent"],
                                               node["hypervisor_cpu_usage_percent"],
                                               "#" * rangex))
+            if node["node_name"] == self.active_node:
+                self.nodes_cpu_pad.attroff(curses.color_pair(self.BLACK_WHITE))
+                self.nodes_cpu_pad.attroff(curses.A_BOLD)
 
         self.safe_noautorefresh(self.nodes_cpu_pad, 0, 0, y, x,
                                 pad_size_y, pad_size_x)
@@ -948,9 +982,14 @@ class UiInteractive(Ui):
 
         self.nodes_io_pad.attroff(curses.A_BOLD)
 
-        nodes = self.node_reporter.overall_live_report(self.nodes_sort)
-        for i in range(0, len(nodes)):
-            node = nodes[i]
+        self.nodes = self.node_reporter.overall_live_report(self.nodes_sort)
+        for i in range(0, len(self.nodes)):
+            node = self.nodes[i]
+
+            if node["node_name"] == self.active_node:
+                self.nodes_io_pad.attron(curses.color_pair(self.BLACK_WHITE))
+                self.nodes_io_pad.attron(curses.A_BOLD)
+
             self.nodes_io_pad.addstr(i + 2, 1, "{0:<20} {1:>8} {2:>8} "
                                      "{3:>8} {4:>8.2f} {5:>6.2f}"
                                      .format(node["node_name"][:20],
@@ -960,12 +999,27 @@ class UiInteractive(Ui):
                                              node["io_bandwidth_mBps"],
                                              node["avg_io_latency_msecs"]))
 
+            if node["node_name"] == self.active_node:
+                self.nodes_io_pad.attroff(curses.color_pair(self.BLACK_WHITE))
+                self.nodes_io_pad.attroff(curses.A_BOLD)
+
         self.safe_noautorefresh(self.nodes_io_pad, 0, 0, y, x,
                                 pad_size_y, pad_size_x)
         return y + pad_size_y
 
     def render_vm_overall_pad(self, y, x):
         self.stdscr.noutrefresh()
+        self.vm_overall_pad.clear()
+
+        if self.active_node:
+            vms = self.vm_reporter.overall_live_report(
+                self.vm_sort, [self.active_node])
+        else:
+            vms = self.vm_reporter.overall_live_report(
+                self.vm_sort)
+        self.vm_overall_pad = curses.newpad(len(vms) + 3, 87)
+        self.vm_overall_pad.border()
+
         pad_size_y, pad_size_x = self.vm_overall_pad.getmaxyx()
 
         self.vm_overall_pad.attron(curses.A_BOLD)
@@ -975,6 +1029,8 @@ class UiInteractive(Ui):
         self.vm_overall_pad.addstr(0, pad_size_x - 15, " Sort: {0:<4} "
                                    .format(self.vm_sort))
 
+        if self.active_node:
+            self.vm_overall_pad.attron(curses.color_pair(self.BLACK_WHITE))
         self.vm_overall_pad.attron(curses.A_BOLD)
         self.vm_overall_pad.addstr(1, 1,
                                    " {vm_name:<30} {cpu:>6} {rdy:>6} {mem:>6} {ciops:>6} "
@@ -990,10 +1046,12 @@ class UiInteractive(Ui):
                                        lat="LAT[ms]"))
 
         self.vm_overall_pad.attroff(curses.A_BOLD)
+        if self.active_node:
+            self.vm_overall_pad.attroff(curses.color_pair(self.BLACK_WHITE))
 
-        vms = self.vm_reporter.overall_live_report(self.vm_sort)
         for i in range(0, len(vms)):
             vm = vms[i]
+
             self.vm_overall_pad.addstr(i + 2, 1,
                                        " {v[vm_name]:<30} "
                                        "{v[hypervisor_cpu_usage_percent]:>6.2f} "
@@ -1019,11 +1077,7 @@ class UiInteractive(Ui):
         refresh_time = datetime.datetime.now() - datetime.timedelta(0, 2)
         while (self.key != ord('q')):
 
-            # TODO: Move all key handling to a separate method.
-            self.key = self.stdscr.getch()
-            self.nodes_sort = self.get_nodes_sort_label(self.key)
-            self.vm_sort = self.get_vm_sort_label(self.key)
-            self.toggle_nodes_pad(self.key)
+            self.handle_key_press()
 
             if refresh_time < datetime.datetime.now() or self.key != -1:
                 current_y_position = 2
