@@ -214,6 +214,9 @@ class NodeReporter(Reporter):
         entity_list = response.entity_list.node
         return entity_list
 
+    def _parse_entity_list_to_dict():
+        pass
+
     def overall_live_report(self, sort="name"):
         field_names = ["node_name", "id", "hypervisor_cpu_usage_ppm",
                        "hypervisor_memory_usage_ppm", "hypervisor_num_iops",
@@ -537,51 +540,6 @@ class Ui(object):
 class UiCli(Ui):
     """CLI interface"""
 
-    # TODO: Need to review this report_time_validator function.
-    #       If need to validate time for functions with different
-    #       a different set of parameters this function is limited
-    #       and will not work.
-    #
-    # Proposal: Make time validator a function that returns boolean
-    #           and the time_range_reports to use it and exit if false.
-    def report_time_validator(self, report_function, start_time, end_time,
-                              sec=None, sort="name", nodes=[]):
-        if start_time >= end_time:
-            parser.print_usage()
-            print("ERROR: Invalid date: Start time must be before end time")
-            return False
-
-        if ((end_time - start_time).days < 1
-                and (end_time - start_time).seconds < 30):
-            parser.print_usage()
-            print("ERROR: Invalid dates: difference between start and "
-                  "end is less than 30 seconds.\n"
-                  "       Minimum time difference for historic report is 30 seconds.")
-            return False
-        if not sec:
-            report_function(start_time, end_time, sort, nodes)
-            return True
-        elif sec < 30:
-            print("INFO: Invalid interval: minimum value 30 seconds for "
-                  "historic report. \n"
-                  "      Setting interval to 30 seconds.")
-            sec = 30
-
-        step_time = start_time
-        delta_time = start_time + datetime.timedelta(seconds=sec)
-        if delta_time > end_time:
-            print("INFO: Invalid interval: greater than the difference "
-                  "between start and end time.\n"
-                  "      Setting single interval between start and end.")
-            report_function(start_time, end_time, sort, nodes)
-            return True
-        else:
-            while step_time < end_time:
-                report_function(step_time, delta_time, sort, nodes)
-                step_time = delta_time
-                delta_time += datetime.timedelta(seconds=sec)
-            return True
-
     def nodes_overall_live_report(self, sec, count, sort="name"):
         if not sec or sec < 0:
             sec = 0
@@ -624,37 +582,48 @@ class UiCli(Ui):
                               node_name=node["node_name"][:20]))
             print("")
 
-    def nodes_overall_time_range_report(self, start_time, end_time, sort="name", hosts=[]):
-        usec_start = int(start_time.strftime("%s") + "000000")
-        usec_end = int(end_time.strftime("%s") + "000000")
-        nodes = self.node_reporter.overall_time_range_report(
-            usec_start, usec_end, sort)
-        print("{time:<21} {node:<20} {cpu:>6} {mem:>6} "
-              "{ciops:>8} {hiops:>8} {iops:>8} {bw:>8} "
-              "{lat:>8}".format(
-                  time=start_time.strftime("%Y/%m/%d-%H:%M:%S"),
-                  node="Node",
-                  cpu="CPU%",
-                  mem="MEM%",
-                  ciops="cIOPs",
-                  hiops="hIOPs",
-                  iops="IOPs",
-                  bw="B/W[MB]",
-                  lat="LAT[ms]"))
-        for node in nodes:
-            print("{time:<21} "
-                  "{node_name:<20} "
-                  "{n[hypervisor_cpu_usage_percent]:>6.2f} "
-                  "{n[hypervisor_memory_usage_percent]:>6.2f} "
-                  "{n[controller_num_iops]:>8.2f} "
-                  "{n[hypervisor_num_iops]:>8.2f} "
-                  "{n[num_iops]:>8.2f} "
-                  "{n[io_bandwidth_mBps]:>8.2f} "
-                  "{n[avg_io_latency_msecs]:>8.2f} "
-                  .format(time=start_time.strftime("%Y/%m/%d-%H:%M:%S"),
-                          n=node,
-                          node_name=node["node_name"][:20]))
-        print("")
+    def nodes_overall_time_range_report(self, start_time, end_time, sec=None,
+                                        sort="name", node_names=[]):
+        """
+        Print nodes overall time range report.
+        """
+        sec = self.time_validator(start_time, end_time, sec)
+        if sec > -1:
+            step_time = start_time
+            delta_time = start_time + datetime.timedelta(seconds=sec)
+            while step_time < end_time:
+                usec_step = int(step_time.strftime("%s") + "000000")
+                usec_delta = int(delta_time.strftime("%s") + "000000")
+                nodes = self.node_reporter.overall_time_range_report(
+                    usec_step, usec_delta, sort)
+                print("{time:<21} {node:<20} {cpu:>6} {mem:>6} "
+                      "{ciops:>8} {hiops:>8} {iops:>8} {bw:>8} "
+                      "{lat:>8}".format(
+                          time=step_time.strftime("%Y/%m/%d-%H:%M:%S"),
+                          node="Node",
+                          cpu="CPU%",
+                          mem="MEM%",
+                          ciops="cIOPs",
+                          hiops="hIOPs",
+                          iops="IOPs",
+                          bw="B/W[MB]",
+                          lat="LAT[ms]"))
+                for node in nodes:
+                    print("{time:<21} "
+                          "{node_name:<20} "
+                          "{n[hypervisor_cpu_usage_percent]:>6.2f} "
+                          "{n[hypervisor_memory_usage_percent]:>6.2f} "
+                          "{n[controller_num_iops]:>8.2f} "
+                          "{n[hypervisor_num_iops]:>8.2f} "
+                          "{n[num_iops]:>8.2f} "
+                          "{n[io_bandwidth_mBps]:>8.2f} "
+                          "{n[avg_io_latency_msecs]:>8.2f} "
+                          .format(time=step_time.strftime("%Y/%m/%d-%H:%M:%S"),
+                                  n=node,
+                                  node_name=node["node_name"][:20]))
+                print("")
+                step_time = delta_time
+                delta_time += datetime.timedelta(seconds=sec)
 
     def uvms_overall_live_report(self, sec, count, sort="name", node_names=[]):
         if not sec or sec < 0:
@@ -699,39 +668,49 @@ class UiCli(Ui):
             print("")
             time.sleep(sec)
 
-    def uvms_overall_time_range_report(self, start_time, end_time,
+    def uvms_overall_time_range_report(self, start_time, end_time, sec=None,
                                        sort="name", node_names=[]):
-        usec_start = int(start_time.strftime("%s") + "000000")
-        usec_end = int(end_time.strftime("%s") + "000000")
-        vms = self.vm_reporter.overall_time_range_report(usec_start, usec_end,
-                                                         sort, node_names)
-        print("{time:<21} {vm:<30} {cpu:>6} {rdy:>6} {mem:>6} "
-              "{ciops:>6} {hiops:>6} {iops:>6} {bw:>8} {lat:>8}".format(
-                  time=start_time.strftime("%Y/%m/%d-%H:%M:%S"),
-                  vm="VM Name",
-                  cpu="CPU%",
-                  rdy="RDY%",
-                  mem="MEM%",
-                  ciops="cIOPs",
-                  hiops="hIOPs",
-                  iops="IOPs",
-                  bw="B/W[MB]",
-                  lat="LAT[ms]"
-              ))
-        for vm in vms:
-            print("{time:<21} {vm_name:<30} "
-                  "{v[hypervisor_cpu_usage_percent]:>6.2f} "
-                  "{v[hypervisor_cpu_ready_time_percent]:>6.2f} "
-                  "{v[memory_usage_percent]:>6.2f} "
-                  "{v[controller_num_iops]:>6.0f} "
-                  "{v[hypervisor_num_iops]:>6.0f} "
-                  "{v[num_iops]:>6.0f} "
-                  "{v[controller_io_bandwidth_mBps]:>8.2f} "
-                  "{v[controller_avg_io_latency_msecs]:>8.2f} "
-                  .format(time=start_time.strftime("%Y/%m/%d-%H:%M:%S"),
-                          vm_name=vm["vm_name"][:30],
-                          v=vm))
-        print("")
+        """
+        Print nodes overall time range report.
+        """
+        sec = self.time_validator(start_time, end_time, sec)
+        if sec > -1:
+            step_time = start_time
+            delta_time = start_time + datetime.timedelta(seconds=sec)
+            while step_time < end_time:
+                usec_step = int(step_time.strftime("%s") + "000000")
+                usec_delta = int(delta_time.strftime("%s") + "000000")
+                vms = self.vm_reporter.overall_time_range_report(usec_step, usec_delta,
+                                                                 sort, node_names)
+                print("{time:<21} {vm:<30} {cpu:>6} {rdy:>6} {mem:>6} "
+                      "{ciops:>6} {hiops:>6} {iops:>6} {bw:>8} {lat:>8}".format(
+                          time=step_time.strftime("%Y/%m/%d-%H:%M:%S"),
+                          vm="VM Name",
+                          cpu="CPU%",
+                          rdy="RDY%",
+                          mem="MEM%",
+                          ciops="cIOPs",
+                          hiops="hIOPs",
+                          iops="IOPs",
+                          bw="B/W[MB]",
+                          lat="LAT[ms]"
+                      ))
+                for vm in vms:
+                    print("{time:<21} {vm_name:<30} "
+                          "{v[hypervisor_cpu_usage_percent]:>6.2f} "
+                          "{v[hypervisor_cpu_ready_time_percent]:>6.2f} "
+                          "{v[memory_usage_percent]:>6.2f} "
+                          "{v[controller_num_iops]:>6.0f} "
+                          "{v[hypervisor_num_iops]:>6.0f} "
+                          "{v[num_iops]:>6.0f} "
+                          "{v[controller_io_bandwidth_mBps]:>8.2f} "
+                          "{v[controller_avg_io_latency_msecs]:>8.2f} "
+                          .format(time=step_time.strftime("%Y/%m/%d-%H:%M:%S"),
+                                  vm_name=vm["vm_name"][:30],
+                                  v=vm))
+                print("")
+                step_time = delta_time
+                delta_time += datetime.timedelta(seconds=sec)
 
 
 class UiInteractive(Ui):
@@ -1263,11 +1242,10 @@ if __name__ == "__main__":
                     ui_cli.nodes_overall_live_report(
                         args.sec, args.count, args.sort)
                 elif args.start_time and args.end_time:
-                    ui_cli.report_time_validator(ui_cli.nodes_overall_time_range_report,
-                                                 args.start_time,
-                                                 args.end_time,
-                                                 args.sec,
-                                                 args.sort)
+                    ui_cli.nodes_overall_time_range_report(args.start_time,
+                                                           args.end_time,
+                                                           args.sec,
+                                                           args.sort)
                 else:
                     parser.print_usage()
                     print("ERROR: Invalid date: Arguments --start-time and "
@@ -1286,12 +1264,11 @@ if __name__ == "__main__":
                                                     args.sort,
                                                     args.node_name)
                 elif args.start_time and args.end_time:
-                    ui_cli.report_time_validator(ui_cli.uvms_overall_time_range_report,
-                                                 args.start_time,
-                                                 args.end_time,
-                                                 args.sec,
-                                                 args.sort,
-                                                 args.node_name)
+                    ui_cli.uvms_overall_time_range_report(args.start_time,
+                                                          args.end_time,
+                                                          args.sec,
+                                                          args.sort,
+                                                          args.node_name)
                 else:
                     parser.print_usage()
                     print("ERROR: Invalid date: Arguments --start-time and "
