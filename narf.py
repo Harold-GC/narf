@@ -328,6 +328,15 @@ class VmReporter(Reporter):
             "lat": "controller_avg_io_latency_msecs"
         }
 
+        self.sort_conversion_arithmos = {
+            "name": "vm_name",
+            "cpu": "-hypervisor_cpu_usage_ppm",
+            "mem": "-memory_usage_ppm",
+            "iops": "-controller_num_iops",
+            "bw": "-controller_io_bandwidth_kBps",
+            "lat": "-controller_avg_io_latency_usecs"
+        }
+
     def _get_vm_live_stats(self, sort_criteria=None, filter_criteria=None,
                            search_term=None, field_name_list=None):
         response = self._get_live_stats(self._ARITHMOS_ENTITY_PROTO,
@@ -347,8 +356,10 @@ class VmReporter(Reporter):
 
         if sort in self.sort_conversion.keys():
             sort_by = self.sort_conversion[sort]
+            sort_by_arithmos = self.sort_conversion_arithmos[sort]
         else:
             sort_by = self.sort_conversion["name"]
+            sort_by_arithmos = self.sort_conversion_arithmos["name"]
 
         filter_by = "power_state==on"
         if node_names:
@@ -357,7 +368,8 @@ class VmReporter(Reporter):
             filter_by += ";" + node_names_str
 
         stats = self._get_vm_live_stats(field_name_list=field_names,
-                                        filter_criteria=filter_by)
+                                        filter_criteria=filter_by,
+                                        sort_criteria=sort_by_arithmos)
 
         all_vms = []
         for vm_stat in stats:
@@ -411,8 +423,10 @@ class VmReporter(Reporter):
     def overall_time_range_report(self, start, end, sort="name", node_names=[]):
         if sort in self.sort_conversion.keys():
             sort_by = self.sort_conversion[sort]
+            sort_by_arithmos = self.sort_conversion_arithmos[sort]
         else:
             sort_by = self.sort_conversion["name"]
+            sort_by_arithmos = self.sort_conversion_arithmos["name"]
 
         # TODO: Needs to test on the behavior of when a VM is shutdown,
         #       and see if there is a way to confirm in which host a VM
@@ -432,7 +446,8 @@ class VmReporter(Reporter):
 
         vm_list = self._get_vm_live_stats(field_name_list=["vm_name", "id",
                                                            "node_name"],
-                                          filter_criteria=filter_by)
+                                          filter_criteria=filter_by,
+                                          sort_criteria=sort_by_arithmos)
         generic_attribute_names = ["node_name"]
 
         sampling_interval = 30
