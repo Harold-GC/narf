@@ -1038,7 +1038,7 @@ class UiInteractive(Ui):
             vm = vms[i]
 
             self.vm_overall_pad.addstr(i + 2, 1,
-                                       " {v[vm_name]:<30} "
+                                       " {vm_name:<30} "
                                        "{v[hypervisor_cpu_usage_percent]:>6.2f} "
                                        "{v[hypervisor_cpu_ready_time_percent]:>6.2f} "
                                        "{v[memory_usage_percent]:>6.2f} "
