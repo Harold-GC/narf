@@ -248,16 +248,8 @@ class NodeReporter(Reporter):
                 "io_bandwidth_mBps":
                 float(node_stat.stats.common_stats.io_bandwidth_kBps / 1024)
             }
-
-            # Set value to slice node name. Max is 30 character. This is used for
-            # displaying the information
-            # TODO: Move this to UI class.
-            # if len(node["node_name"]) > 30:
-            #    self.max_node_name_width = 30
-            #    node["node_name"] = node["node_name"][:30]
-            # elif len(node["node_name"]) > self.max_node_name_width:
-            #    self.max_node_name_width = len(node["node_name"])
             all_nodes.append(node)
+
         if sort_by == "node_name":
             return sorted(all_nodes, key=lambda node: node[sort_by])
         else:
@@ -304,6 +296,7 @@ class NodeReporter(Reporter):
                     sampling_interval) / 1024,
             }
             all_nodes.append(node_stats)
+
         if sort_by == "node_name":
             return sorted(all_nodes, key=lambda node: node[sort_by])
         else:
@@ -405,17 +398,8 @@ class VmReporter(Reporter):
                 "controller_avg_io_latency_msecs":
                 vm_stat.stats.common_stats.controller_avg_io_latency_usecs / 1000
             }
-
-            # Set value to slice vm name. Max is 30 character. This is used for
-            # displaying the information
-            # TODO: Move this to UI class.
-            # if len(vm["vm_name"]) > 30:
-            #    self.max_vm_name_width = 30
-            #    vm["vm_name"] = vm["vm_name"][:30]
-            # elif len(vm["vm_name"]) > self.max_vm_name_width:
-            #    self.max_vm_name_width = len(vm["vm_name"])
-
             all_vms.append(vm)
+
         if sort_by == "vm_name":
             return sorted(all_vms, key=lambda node: node[sort_by])
         else:
@@ -495,6 +479,7 @@ class VmReporter(Reporter):
                     sampling_interval) / 1000,
             }
             all_vms.append(vm)
+
         if sort_by == "vm_name":
             return sorted(all_vms, key=lambda vm: vm[sort_by])
         else:
