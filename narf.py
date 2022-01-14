@@ -252,11 +252,11 @@ class NodeReporter(Reporter):
             # Set value to slice node name. Max is 30 character. This is used for
             # displaying the information
             # TODO: Move this to UI class.
-            if len(node["node_name"]) > 30:
-                self.max_node_name_width = 30
-                node["node_name"] = node["node_name"][:30]
-            elif len(node["node_name"]) > self.max_node_name_width:
-                self.max_node_name_width = len(node["node_name"])
+            # if len(node["node_name"]) > 30:
+            #    self.max_node_name_width = 30
+            #    node["node_name"] = node["node_name"][:30]
+            # elif len(node["node_name"]) > self.max_node_name_width:
+            #    self.max_node_name_width = len(node["node_name"])
             all_nodes.append(node)
         if sort_by == "node_name":
             return sorted(all_nodes, key=lambda node: node[sort_by])
@@ -409,11 +409,11 @@ class VmReporter(Reporter):
             # Set value to slice vm name. Max is 30 character. This is used for
             # displaying the information
             # TODO: Move this to UI class.
-            if len(vm["vm_name"]) > 30:
-                self.max_vm_name_width = 30
-                vm["vm_name"] = vm["vm_name"][:30]
-            elif len(vm["vm_name"]) > self.max_vm_name_width:
-                self.max_vm_name_width = len(vm["vm_name"])
+            # if len(vm["vm_name"]) > 30:
+            #    self.max_vm_name_width = 30
+            #    vm["vm_name"] = vm["vm_name"][:30]
+            # elif len(vm["vm_name"]) > self.max_vm_name_width:
+            #    self.max_vm_name_width = len(vm["vm_name"])
 
             all_vms.append(vm)
         if sort_by == "vm_name":
@@ -611,7 +611,7 @@ class UiCli(Ui):
             today = datetime.date.today()
             time_now = datetime.datetime.now().strftime("%H:%M:%S")
             nodes = self.node_reporter.overall_live_report(sort)
-            print("{time:<11} {node:<{width}} {cpu:>6} {mem:>6} "
+            print("{time:<11} {node:<20} {cpu:>6} {mem:>6} "
                   "{ciops:>8} {hiops:>8} {iops:>8} {bw:>8} "
                   "{lat:>8}".format(
                       time=str(today),
@@ -623,11 +623,10 @@ class UiCli(Ui):
                       iops="IOPs",
                       bw="B/W[MB]",
                       lat="LAT[ms]",
-                      width=self.node_reporter.max_node_name_width
                   ))
             for node in nodes:
                 print("{time:<11} "
-                      "{n[node_name]:<{width}} "
+                      "{node_name:<20} "
                       "{n[hypervisor_cpu_usage_percent]:>6.2f} "
                       "{n[hypervisor_memory_usage_percent]:>6.2f} "
                       "{n[controller_num_iops]:>8.2f} "
@@ -637,7 +636,7 @@ class UiCli(Ui):
                       "{n[avg_io_latency_msecs]:>8.2f} "
                       .format(time=str(time_now),
                               n=node,
-                              width=self.node_reporter.max_node_name_width))
+                              node_name=node["node_name"][:20]))
             print("")
 
     def nodes_overall_time_range_report(self, start_time, end_time, sort="name", hosts=[]):
@@ -669,8 +668,7 @@ class UiCli(Ui):
                   "{n[avg_io_latency_msecs]:>8.2f} "
                   .format(time=start_time.strftime("%Y/%m/%d-%H:%M:%S"),
                           n=node,
-                          node_name=node["node_name"][:20],
-                          width=self.node_reporter.max_node_name_width))
+                          node_name=node["node_name"][:20]))
         print("")
 
     def uvms_overall_live_report(self, sec, count, sort="name", node_names=[]):
@@ -686,7 +684,7 @@ class UiCli(Ui):
             today = datetime.date.today()
             time_now = datetime.datetime.now().strftime("%H:%M:%S")
             vms = self.vm_reporter.overall_live_report(sort, node_names)
-            print("{time:<11} {vm:<{width}} {cpu:>6} {rdy:>6} {mem:>6} "
+            print("{time:<11} {vm:<30} {cpu:>6} {rdy:>6} {mem:>6} "
                   "{ciops:>6} {hiops:>6} {iops:>6} {bw:>8} {lat:>8}".format(
                       time=str(today),
                       vm="VM Name",
@@ -701,7 +699,7 @@ class UiCli(Ui):
                       width=self.vm_reporter.max_vm_name_width
                   ))
             for vm in vms:
-                print("{0:<11} {v[vm_name]:<{width}} "
+                print("{0:<11} {vm_name:<30} "
                       "{v[hypervisor_cpu_usage_percent]:>6.2f} "
                       "{v[hypervisor_cpu_ready_time_percent]:>6.2f} "
                       "{v[memory_usage_percent]:>6.2f} "
@@ -711,8 +709,8 @@ class UiCli(Ui):
                       "{v[controller_io_bandwidth_mBps]:>8.2f} "
                       "{v[controller_avg_io_latency_msecs]:>8.2f} "
                       .format(str(time_now),
-                              v=vm,
-                              width=self.vm_reporter.max_vm_name_width))
+                              vm_name=vm["vm_name"][:30],
+                              v=vm))
             print("")
             time.sleep(sec)
 
