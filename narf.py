@@ -671,7 +671,7 @@ class UiCli(Ui):
     def uvms_overall_time_range_report(self, start_time, end_time, sec=None,
                                        sort="name", node_names=[]):
         """
-        Print nodes overall time range report.
+        Print UVMs overall time range report.
         """
         sec = self.time_validator(start_time, end_time, sec)
         if sec > -1:
