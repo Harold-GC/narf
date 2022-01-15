@@ -214,58 +214,76 @@ class NodeReporter(Reporter):
         entity_list = response.entity_list.node
         return entity_list
 
-    def _parse_entity_list_to_dict():
-        pass
+    def _parse_entity_list_to_dict(self, stats):
+        """
+        Get an entity_list as returned from MasterGetEntitiesStats,
+        parse the entities and stats to a dictinary that will be returned.
+
+        This is a helper for reporters methods. generating here
+        the dictionary that is returned to Ui classes avoid to duplicate
+        the conversion in the reporters methods.
+        """
+        nodes_stats_dic = []
+        for node_stat in stats:
+            node = {}
+            if hasattr(node_stat, "node_name"):
+                node["node_name"] = node_stat.node_name
+            if hasattr(node_stat, "id"):
+                node["node_id"] = str(node_stat.id)
+            if hasattr(node_stat.stats, "hypervisor_cpu_usage_ppm"):
+                node["hypervisor_cpu_usage_percent"] = (
+                    node_stat.stats.hypervisor_cpu_usage_ppm / 10000)
+            if hasattr(node_stat.stats, "hypervisor_memory_usage_ppm"):
+                node["hypervisor_memory_usage_percent"] = (
+                    node_stat.stats.hypervisor_memory_usage_ppm / 10000)
+            if hasattr(node_stat.stats.common_stats, "controller_num_iops"):
+                node["controller_num_iops"] = (
+                    node_stat.stats.common_stats.controller_num_iops)
+            if hasattr(node_stat.stats.common_stats, "hypervisor_num_iops"):
+                node["hypervisor_num_iops"] = (
+                    node_stat.stats.common_stats.hypervisor_num_iops)
+            if hasattr(node_stat.stats.common_stats, "num_iops"):
+                node["num_iops"] = (node_stat.stats.common_stats.num_iops)
+            if hasattr(node_stat.stats.common_stats, "avg_io_latency_usecs"):
+                node["avg_io_latency_msecs"] = (
+                    node_stat.stats.common_stats.avg_io_latency_usecs / 1000)
+            if hasattr(node_stat.stats.common_stats, "io_bandwidth_kBps"):
+                node["io_bandwidth_mBps"] = float(
+                    node_stat.stats.common_stats.io_bandwidth_kBps / 1024)
+            nodes_stats_dic.append(node)
+        return nodes_stats_dic
+
+    def _sort_entity_dict(self, nodes_stats_dic, sort):
+        if sort in self.sort_conversion.keys():
+            sort_by = self.sort_conversion[sort]
+        else:
+            sort_by = self.sort_conversion["name"]
+
+        if sort_by == "node_name":
+            return sorted(nodes_stats_dic, key=lambda node: node[sort_by])
+        else:
+            return sorted(nodes_stats_dic, key=lambda node: node[sort_by], reverse=True)
 
     def overall_live_report(self, sort="name"):
+        """
+        Returns a dictionary with overall node stats.
+        """
         field_names = ["node_name", "id", "hypervisor_cpu_usage_ppm",
                        "hypervisor_memory_usage_ppm", "hypervisor_num_iops",
                        "controller_num_iops", "num_iops",
                        "avg_io_latency_usecs", "io_bandwidth_kBps"]
 
-        if sort in self.sort_conversion.keys():
-            sort_by = self.sort_conversion[sort]
-        else:
-            sort_by = self.sort_conversion["name"]
-
+        # Placeholder to later enable filtering in the node reports if needed.
         filter_by = ""
-        all_nodes = []
+
         stats = self._get_node_live_stats(field_name_list=field_names,
                                           filter_criteria=filter_by)
-        for node_stat in stats:
-            node = {
-                "node_name": node_stat.node_name,
-                "node_id": node_stat.id,
-                "hypervisor_cpu_usage_percent":
-                node_stat.stats.hypervisor_cpu_usage_ppm / 10000,
-                "hypervisor_memory_usage_percent":
-                node_stat.stats.hypervisor_memory_usage_ppm / 10000,
-                "controller_num_iops":
-                node_stat.stats.common_stats.controller_num_iops,
-                "hypervisor_num_iops":
-                node_stat.stats.common_stats.hypervisor_num_iops,
-                "num_iops":
-                node_stat.stats.common_stats.num_iops,
-                "avg_io_latency_msecs":
-                node_stat.stats.common_stats.avg_io_latency_usecs / 1000,
-                "io_bandwidth_mBps":
-                float(node_stat.stats.common_stats.io_bandwidth_kBps / 1024)
-            }
-            all_nodes.append(node)
-
-        if sort_by == "node_name":
-            return sorted(all_nodes, key=lambda node: node[sort_by])
-        else:
-            return sorted(all_nodes, key=lambda node: node[sort_by], reverse=True)
+        nodes_stats_dic = self._parse_entity_list_to_dict(stats)
+        return self._sort_entity_dict(nodes_stats_dic, sort)
 
     def overall_time_range_report(self, start, end, sort="name", nodes=[]):
-        if sort in self.sort_conversion.keys():
-            sort_by = self.sort_conversion[sort]
-        else:
-            sort_by = self.sort_conversion["name"]
-
         sampling_interval = 30
-        all_nodes = []
+        nodes_stats_dic = []
         for node in self.nodes:
             node_stats = {
                 "node_name": node.node_name,
@@ -298,12 +316,8 @@ class NodeReporter(Reporter):
                     node.id, "io_bandwidth_kBps", start, end,
                     sampling_interval) / 1024,
             }
-            all_nodes.append(node_stats)
-
-        if sort_by == "node_name":
-            return sorted(all_nodes, key=lambda node: node[sort_by])
-        else:
-            return sorted(all_nodes, key=lambda node: node[sort_by], reverse=True)
+            nodes_stats_dic.append(node_stats)
+        return self._sort_entity_dict(nodes_stats_dic, sort)
 
 
 class VmReporter(Reporter):
