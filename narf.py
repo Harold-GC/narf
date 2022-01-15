@@ -214,7 +214,7 @@ class NodeReporter(Reporter):
         entity_list = response.entity_list.node
         return entity_list
 
-    def _parse_entity_list_to_dict(self, stats):
+    def _get_live_stats_dic(self, field_list, filter_by=""):
         """
         Get an entity_list as returned from MasterGetEntitiesStats,
         parse the entities and stats to a dictinary that will be returned.
@@ -225,6 +225,8 @@ class NodeReporter(Reporter):
 
         As more stats for different reports are needed this list will grow.
         """
+        stats = self._get_node_live_stats(field_name_list=field_list,
+                                          filter_criteria=filter_by)
         nodes_stats_dic = []
         for node_stat in stats:
             node = {}
@@ -255,7 +257,7 @@ class NodeReporter(Reporter):
             nodes_stats_dic.append(node)
         return nodes_stats_dic
 
-    def _get_time_range_stats(self, field_list, start, end):
+    def _get_time_range_stats_dic(self, field_list, start, end):
         """
         Get an entity_list as returned from MasterGetEntitiesStats,
         parse the entities and stats to a dictinary that will be returned.
@@ -321,33 +323,33 @@ class NodeReporter(Reporter):
             sort_by = self.sort_conversion["name"]
 
         if sort_by == "node_name":
-            return sorted(nodes_stats_dic, key=lambda node: node[sort_by])
+            return sorted(nodes_stats_dic,
+                          key=lambda node: node[sort_by])
         else:
-            return sorted(nodes_stats_dic, key=lambda node: node[sort_by], reverse=True)
+            return sorted(nodes_stats_dic,
+                          key=lambda node: node[sort_by], reverse=True)
 
     def overall_live_report(self, sort="name"):
         """
-        Returns a dictionary with overall node stats.
+        Returns a sorted dictionary with overall node stats.
         """
-        field_names = ["node_name", "id", "hypervisor_cpu_usage_ppm",
-                       "hypervisor_memory_usage_ppm", "hypervisor_num_iops",
-                       "controller_num_iops", "num_iops",
-                       "avg_io_latency_usecs", "io_bandwidth_kBps"]
+        field_list = ["node_name", "id", "hypervisor_cpu_usage_ppm",
+                      "hypervisor_memory_usage_ppm", "hypervisor_num_iops",
+                      "controller_num_iops", "num_iops",
+                      "avg_io_latency_usecs", "io_bandwidth_kBps"]
 
-        # Placeholder to later enable filtering in the node reports if needed.
-        filter_by = ""
-
-        stats = self._get_node_live_stats(field_name_list=field_names,
-                                          filter_criteria=filter_by)
-        nodes_stats_dic = self._parse_entity_list_to_dict(stats)
-        return self._sort_entity_dict(nodes_stats_dic, sort)
+        ret = self._get_live_stats_dic(field_list)
+        return self._sort_entity_dict(ret, sort)
 
     def overall_time_range_report(self, start, end, sort="name", nodes=[]):
+        """
+        Returns a sorted dictionary with time range overall node stats.
+        """
         field_list = ["node_name", "id", "hypervisor_cpu_usage_ppm",
                       "hypervisor_memory_usage_ppm", "controller_num_iops",
                       "hypervisor_num_iops", "num_iops",
                       "avg_io_latency_usecs", "io_bandwidth_kBps"]
-        ret = self._get_time_range_stats(field_list, start, end)
+        ret = self._get_time_range_stats_dic(field_list, start, end)
         return self._sort_entity_dict(ret, sort)
 
 
