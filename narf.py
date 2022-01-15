@@ -222,6 +222,8 @@ class NodeReporter(Reporter):
         This is a helper for reporters methods. generating here
         the dictionary that is returned to Ui classes avoid to duplicate
         the conversion in the reporters methods.
+
+        As more stats for different reports are needed this list will grow.
         """
         nodes_stats_dic = []
         for node_stat in stats:
@@ -229,7 +231,7 @@ class NodeReporter(Reporter):
             if hasattr(node_stat, "node_name"):
                 node["node_name"] = node_stat.node_name
             if hasattr(node_stat, "id"):
-                node["node_id"] = str(node_stat.id)
+                node["node_id"] = int(node_stat.id)
             if hasattr(node_stat.stats, "hypervisor_cpu_usage_ppm"):
                 node["hypervisor_cpu_usage_percent"] = (
                     node_stat.stats.hypervisor_cpu_usage_ppm / 10000)
@@ -250,6 +252,65 @@ class NodeReporter(Reporter):
             if hasattr(node_stat.stats.common_stats, "io_bandwidth_kBps"):
                 node["io_bandwidth_mBps"] = float(
                     node_stat.stats.common_stats.io_bandwidth_kBps / 1024)
+            nodes_stats_dic.append(node)
+        return nodes_stats_dic
+
+    def _get_time_range_stats(self, field_list, start, end):
+        """
+        Get an entity_list as returned from MasterGetEntitiesStats,
+        parse the entities and stats to a dictinary that will be returned.
+
+        This is a helper for reporters methods. generating here
+        the dictionary that is returned to Ui classes avoid to duplicate
+        the conversion in the reporters methods.
+        """
+        sampling_interval = 30
+        nodes_stats_dic = []
+        for node_pivot in self.nodes:
+            node = {}
+            node["node_name"] = node_pivot.node_name
+            node["node_id"] = int(node_pivot.id)
+            if "hypervisor_cpu_usage_ppm" in field_list:
+                node["hypervisor_cpu_usage_percent"] = (
+                    self._get_time_range_stat_average(
+                        node_pivot.id, "hypervisor_cpu_usage_ppm", start, end,
+                        sampling_interval) / 10000
+                )
+            if "hypervisor_memory_usage_ppm" in field_list:
+                node["hypervisor_memory_usage_percent"] = (
+                    self._get_time_range_stat_average(
+                        node_pivot.id, "hypervisor_memory_usage_ppm", start, end,
+                        sampling_interval) / 10000
+                )
+            if "controller_num_iops" in field_list:
+                node["controller_num_iops"] = (
+                    self._get_time_range_stat_average(
+                        node_pivot.id, "controller_num_iops", start, end,
+                        sampling_interval)
+                )
+            if "hypervisor_num_iops" in field_list:
+                node["hypervisor_num_iops"] = (
+                    self._get_time_range_stat_average(
+                        node_pivot.id, "hypervisor_num_iops", start, end,
+                        sampling_interval)
+                )
+            if "num_iops" in field_list:
+                node["num_iops"] = (
+                    int(self._get_time_range_stat_average(
+                        node_pivot.id, "num_iops", start, end, sampling_interval))
+                )
+            if "avg_io_latency_usecs" in field_list:
+                node["avg_io_latency_msecs"] = (
+                    self._get_time_range_stat_average(
+                        node_pivot.id, "avg_io_latency_usecs", start, end,
+                        sampling_interval) / 1000
+                )
+            if "io_bandwidth_kBps" in field_list:
+                node["io_bandwidth_mBps"] = (
+                    self._get_time_range_stat_average(
+                        node_pivot.id, "io_bandwidth_kBps", start, end,
+                        sampling_interval) / 1024
+                )
             nodes_stats_dic.append(node)
         return nodes_stats_dic
 
@@ -282,42 +343,12 @@ class NodeReporter(Reporter):
         return self._sort_entity_dict(nodes_stats_dic, sort)
 
     def overall_time_range_report(self, start, end, sort="name", nodes=[]):
-        sampling_interval = 30
-        nodes_stats_dic = []
-        for node in self.nodes:
-            node_stats = {
-                "node_name": node.node_name,
-                "node_id": node.id,
-                "hypervisor_cpu_usage_percent":
-                self._get_time_range_stat_average(
-                    node.id, "hypervisor_cpu_usage_ppm", start, end,
-                    sampling_interval) / 10000,
-                "hypervisor_memory_usage_percent":
-                self._get_time_range_stat_average(
-                    node.id, "hypervisor_memory_usage_ppm", start, end,
-                    sampling_interval) / 10000,
-                "controller_num_iops":
-                self._get_time_range_stat_average(
-                    node.id, "controller_num_iops", start, end,
-                    sampling_interval),
-                "hypervisor_num_iops":
-                self._get_time_range_stat_average(
-                    node.id, "hypervisor_num_iops", start, end,
-                    sampling_interval),
-                "num_iops":
-                int(self._get_time_range_stat_average(
-                    node.id, "num_iops", start, end, sampling_interval)),
-                "avg_io_latency_msecs":
-                self._get_time_range_stat_average(
-                    node.id, "avg_io_latency_usecs", start, end,
-                    sampling_interval) / 1000,
-                "io_bandwidth_mBps":
-                self._get_time_range_stat_average(
-                    node.id, "io_bandwidth_kBps", start, end,
-                    sampling_interval) / 1024,
-            }
-            nodes_stats_dic.append(node_stats)
-        return self._sort_entity_dict(nodes_stats_dic, sort)
+        field_list = ["node_name", "id", "hypervisor_cpu_usage_ppm",
+                      "hypervisor_memory_usage_ppm", "controller_num_iops",
+                      "hypervisor_num_iops", "num_iops",
+                      "avg_io_latency_usecs", "io_bandwidth_kBps"]
+        ret = self._get_time_range_stats(field_list, start, end)
+        return self._sort_entity_dict(ret, sort)
 
 
 class VmReporter(Reporter):
@@ -358,6 +389,16 @@ class VmReporter(Reporter):
                                         search_term, field_name_list)
         entity_list = response.entity_list.vm
         return entity_list
+
+    def _parse_entity_list_to_dict(self, stats):
+        """
+        Get an entity_list as returned from MasterGetEntitiesStats,
+        parse the entities and stats to a dictinary that will be returned.
+
+        This is a helper for reporters methods. generating here
+        the dictionary that is returned to Ui classes avoid to duplicate
+        the conversion in the reporters methods.
+        """
 
     def overall_live_report(self, sort="name", node_names=[]):
         field_names = ["vm_name", "id", "node_name",
