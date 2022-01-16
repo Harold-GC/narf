@@ -30,6 +30,28 @@ from serviceability.interface.analytics.arithmos_rpc_client import (
 
 # from stats.arithmos import stats_util
 
+# Reports fields definitions
+NODES_OVERALL_REPORT_FIELDS = (
+    [
+        {"key": "node_name", "header": "Node",
+            "width": 20, "align": "<", "format": ".20"},
+        {"key": "hypervisor_cpu_usage_percent", "header": "CPU%",
+            "width": 6, "align": ">", "format": ".2f"},
+        {"key": "hypervisor_memory_usage_percent", "header": "MEM%",
+            "width": 6, "align": ">", "format": ".2f"},
+        {"key": "controller_num_iops", "header": "cIOPS",
+            "width": 8, "align": ">", "format": ".2f"},
+        {"key": "hypervisor_num_iops", "header": "hIOPS",
+            "width": 8, "align": ">", "format": ".2f"},
+        {"key": "num_iops", "header": "IOPS",
+            "width": 8, "align": ">", "format": ".2f"},
+        {"key": "io_bandwidth_mBps",
+            "header": "B/W[MB]", "width": 8, "align": ">", "format": ".2f"},
+        {"key": "avg_io_latency_msecs",
+            "header": "LAT[ms]", "width": 8, "align": ">", "format": ".2f"}
+    ]
+)
+
 
 class Reporter(object):
     """Reporter base """
@@ -612,6 +634,45 @@ class Ui(object):
 class UiCli(Ui):
     """CLI interface"""
 
+    def _report_format_printer(self, field_list, entity_list, time):
+
+        header_format_string = ""
+        entity_format_string = ""
+        for i in range(len(field_list)):
+            header_format_string += ("{" +
+                                     str(i) + ":" +
+                                     field_list[i]["align"] +
+                                     str(field_list[i]["width"]) +
+                                     "} "
+                                     )
+            entity_format_string += ("{" +
+                                     str(i) + ":" +
+                                     field_list[i]["align"] +
+                                     str(field_list[i]["width"]) +
+                                     field_list[i]["format"] +
+                                     "} "
+                                     )
+
+        header_list = []
+        for i in range(len(field_list)):
+            header_list.append(field_list[i]["header"])
+
+        BOLD = '\033[1m'
+        END = '\033[0m'
+        print((BOLD + time + " | " +
+               header_format_string + END).format(*header_list))
+
+        for entity in entity_list:
+            entity_stat_list = []
+            for i in range(len(field_list)):
+                stat_key = field_list[i]["key"]
+                stat_value = entity[stat_key]
+                entity_stat_list.append(stat_value)
+            print(time + " | " +
+                  entity_format_string.format(*entity_stat_list))
+
+        print("")
+
     def nodes_overall_live_report(self, sec, count, sort="name"):
         if not sec or sec < 0:
             sec = 0
@@ -623,36 +684,11 @@ class UiCli(Ui):
         while i < count:
             time.sleep(sec)
             i += 1
-            today = datetime.date.today()
-            time_now = datetime.datetime.now().strftime("%H:%M:%S")
-            nodes = self.node_reporter.overall_live_report(sort)
-            print("{time:<11} {node:<20} {cpu:>6} {mem:>6} "
-                  "{ciops:>8} {hiops:>8} {iops:>8} {bw:>8} "
-                  "{lat:>8}".format(
-                      time=str(today),
-                      node="Node",
-                      cpu="CPU%",
-                      mem="MEM%",
-                      ciops="cIOPs",
-                      hiops="hIOPs",
-                      iops="IOPs",
-                      bw="B/W[MB]",
-                      lat="LAT[ms]",
-                  ))
-            for node in nodes:
-                print("{time:<11} "
-                      "{node_name:<20} "
-                      "{n[hypervisor_cpu_usage_percent]:>6.2f} "
-                      "{n[hypervisor_memory_usage_percent]:>6.2f} "
-                      "{n[controller_num_iops]:>8.2f} "
-                      "{n[hypervisor_num_iops]:>8.2f} "
-                      "{n[num_iops]:>8.2f} "
-                      "{n[io_bandwidth_mBps]:>8.2f} "
-                      "{n[avg_io_latency_msecs]:>8.2f} "
-                      .format(time=str(time_now),
-                              n=node,
-                              node_name=node["node_name"][:20]))
-            print("")
+            time_now = datetime.datetime.now().strftime("%Y/%m/%d-%H:%M:%S")
+            entity_list = self.node_reporter.overall_live_report(sort)
+            self._report_format_printer(
+                NODES_OVERALL_REPORT_FIELDS, entity_list, time_now)
+        return True
 
     def nodes_overall_time_range_report(self, start_time, end_time, sec=None,
                                         sort="name", node_names=[]):
