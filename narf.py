@@ -680,10 +680,8 @@ class UiCli(Ui):
         else:
             if not count or count < 0:
                 count = 1000
-        i = 0
-        while i < count:
+        for i in range(count):
             time.sleep(sec)
-            i += 1
             time_now = datetime.datetime.now().strftime("%Y/%m/%d-%H:%M:%S")
             entity_list = self.node_reporter.overall_live_report(sort)
             self._report_format_printer(
