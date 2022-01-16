@@ -27,11 +27,57 @@ from stats.arithmos.interface.arithmos_interface_pb2 import (
 from serviceability.interface.analytics.arithmos_rpc_client import (
     ArithmosDataProcessing)  # noqa: E402
 
+# ~~~ Report fields definitions ~~~
+# Arithmos fields are used by the report methods in the reporter classes,
+# These fields needs to be mapped by the _get_*_dic() methods in reporters.
+# The reason this atributes needs to be mapped is because some are
+# transformed, for example "hypervisor_cpu_usage_ppm" is divided by 10000
+# and transformed into "hypervisor_cpu_usage_percent".
+#
+#   node_stat.stats.hypervisor_cpu_usage_ppm / 10000
+#                           =
+#             hypervisor_cpu_usage_percent
+#
+# Cli fields are used by the UiCli class in the formater methods and
+# describe how the information needs to be displayed on console.
+# Keys in Cli fields correspond to the ones in dictionaries returned
+# by the _get_*dic() methods in reporters.
+#
+# +--------------+
+# |   Arithmos   | --->  hypervisor_cpu_usage_ppm     ---> 89000
+# +--------------+
+#       |
+#       V
+# +--------------+
+# | NodeReporter | --->  hypervisor_cpu_usage_percent ---> 89000 / 10000 = 8.9%
+# +--------------+
+#       |
+#       V
+# +--------------+>      key:    hypervisor_cpu_usage_percent
+# |   UiCli      | --->  header: CPU%
+# +--------------+       width:  6    (min width)
+#                        align:  >    (aligned right)
+#                        format: .2f  (2 decimal float)
+#                                      |
+#                                      |
+#                                      V
+#                        +- Console output -------
+#                        | $ ./narf.py -n
+#                        | 2022/01/16-02:13:04 | Node                   CPU%   [...]
+#                        | 2022/01/16-02:13:04 | Prolix1                8.90   [...]
+#                        | [...]
+#
+# ~~~ ~~~
+NODES_OVERALL_REPORT_ARITHMOS_FIELDS = (
+    [
+        "node_name", "id", "hypervisor_cpu_usage_ppm",
+        "hypervisor_memory_usage_ppm", "hypervisor_num_iops",
+        "controller_num_iops", "num_iops",
+        "avg_io_latency_usecs", "io_bandwidth_kBps"
+    ]
+)
 
-# from stats.arithmos import stats_util
-
-# Reports fields definitions
-NODES_OVERALL_REPORT_FIELDS = (
+NODES_OVERALL_REPORT_CLI_FIELDS = (
     [
         {"key": "node_name", "header": "Node",
             "width": 20, "align": "<", "format": ".20"},
@@ -355,23 +401,15 @@ class NodeReporter(Reporter):
         """
         Returns a sorted dictionary with overall node stats.
         """
-        field_list = ["node_name", "id", "hypervisor_cpu_usage_ppm",
-                      "hypervisor_memory_usage_ppm", "hypervisor_num_iops",
-                      "controller_num_iops", "num_iops",
-                      "avg_io_latency_usecs", "io_bandwidth_kBps"]
-
-        ret = self._get_live_stats_dic(field_list)
+        ret = self._get_live_stats_dic(NODES_OVERALL_REPORT_ARITHMOS_FIELDS)
         return self._sort_entity_dict(ret, sort)
 
     def overall_time_range_report(self, start, end, sort="name", nodes=[]):
         """
         Returns a sorted dictionary with time range overall node stats.
         """
-        field_list = ["node_name", "id", "hypervisor_cpu_usage_ppm",
-                      "hypervisor_memory_usage_ppm", "controller_num_iops",
-                      "hypervisor_num_iops", "num_iops",
-                      "avg_io_latency_usecs", "io_bandwidth_kBps"]
-        ret = self._get_time_range_stats_dic(field_list, start, end)
+        ret = self._get_time_range_stats_dic(
+            NODES_OVERALL_REPORT_ARITHMOS_FIELDS, start, end)
         return self._sort_entity_dict(ret, sort)
 
 
@@ -688,7 +726,7 @@ class UiCli(Ui):
             time_now = datetime.datetime.now().strftime("%Y/%m/%d-%H:%M:%S")
             entity_list = self.node_reporter.overall_live_report(sort)
             self._report_format_printer(
-                NODES_OVERALL_REPORT_FIELDS, entity_list, time_now)
+                NODES_OVERALL_REPORT_CLI_FIELDS, entity_list, time_now)
         return True
 
     def nodes_overall_time_range_report(self, start_time, end_time, sec=None,
@@ -707,7 +745,7 @@ class UiCli(Ui):
                 entity_list = self.node_reporter.overall_time_range_report(
                     usec_step, usec_delta, sort)
                 self._report_format_printer(
-                    NODES_OVERALL_REPORT_FIELDS,
+                    NODES_OVERALL_REPORT_CLI_FIELDS,
                     entity_list,
                     step_time.strftime("%Y/%m/%d-%H:%M:%S")
                 )
