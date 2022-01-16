@@ -67,15 +67,18 @@ from serviceability.interface.analytics.arithmos_rpc_client import (
 #                        | 2022/01/16-02:13:04 | Prolix1                8.90   [...]
 #                        | [...]
 #
+# TODO: In this way report fields definitions can later be moved to a config file.
+#
 # ~~~ ~~~
 NODES_OVERALL_REPORT_ARITHMOS_FIELDS = (
     [
         "node_name", "id", "hypervisor_cpu_usage_ppm",
         "hypervisor_memory_usage_ppm", "hypervisor_num_iops",
         "controller_num_iops", "num_iops",
-        "avg_io_latency_usecs", "io_bandwidth_kBps"
+        "io_bandwidth_kBps", "avg_io_latency_usecs"
     ]
 )
+
 
 NODES_OVERALL_REPORT_CLI_FIELDS = (
     [
@@ -85,9 +88,9 @@ NODES_OVERALL_REPORT_CLI_FIELDS = (
             "width": 6, "align": ">", "format": ".2f"},
         {"key": "hypervisor_memory_usage_percent", "header": "MEM%",
             "width": 6, "align": ">", "format": ".2f"},
-        {"key": "controller_num_iops", "header": "cIOPS",
-            "width": 8, "align": ">", "format": ".2f"},
         {"key": "hypervisor_num_iops", "header": "hIOPS",
+            "width": 8, "align": ">", "format": ".2f"},
+        {"key": "controller_num_iops", "header": "cIOPS",
             "width": 8, "align": ">", "format": ".2f"},
         {"key": "num_iops", "header": "IOPS",
             "width": 8, "align": ">", "format": ".2f"},
@@ -95,6 +98,82 @@ NODES_OVERALL_REPORT_CLI_FIELDS = (
             "header": "B/W[MB]", "width": 8, "align": ">", "format": ".2f"},
         {"key": "avg_io_latency_msecs",
             "header": "LAT[ms]", "width": 8, "align": ">", "format": ".2f"}
+    ]
+)
+
+NODES_IOPS_REPORT_ARITHMOS_FIELDS = (
+    [
+        "node_name", "id",
+        "hypervisor_cpu_usage_ppm", "hypervisor_memory_usage_ppm",
+        "hypervisor_num_iops",
+        "hypervisor_num_read_iops", "hypervisor_num_write_iops",
+        "controller_num_iops",
+        "controller_num_read_iops", "controller_num_write_iops",
+        "num_iops",
+        "num_read_iops", "num_write_iops"
+    ]
+)
+
+NODES_IOPS_REPORT_CLI_FIELDS = (
+    [
+        {"key": "node_name", "header": "Node",
+            "width": 20, "align": "<", "format": ".20"},
+        {"key": "hypervisor_cpu_usage_percent", "header": "CPU%",
+            "width": 6, "align": ">", "format": ".2f"},
+        {"key": "hypervisor_memory_usage_percent", "header": "MEM%",
+            "width": 6, "align": ">", "format": ".2f"},
+        {"key": "hypervisor_num_iops", "header": "hIOPS",
+            "width": 8, "align": ">", "format": ".2f"},
+        {"key": "hypervisor_num_read_iops", "header": "hRIOPS",
+            "width": 8, "align": ">", "format": ".2f"},
+        {"key": "hypervisor_num_write_iops", "header": "hWIOPS",
+            "width": 8, "align": ">", "format": ".2f"},
+        {"key": "controller_num_iops", "header": "cIOPS",
+            "width": 8, "align": ">", "format": ".2f"},
+        {"key": "controller_num_read_iops", "header": "cRIOPS",
+            "width": 8, "align": ">", "format": ".2f"},
+        {"key": "controller_num_write_iops", "header": "cWIOPS",
+            "width": 8, "align": ">", "format": ".2f"},
+        {"key": "num_read_iops", "header": "RIOPS",
+            "width": 8, "align": ">", "format": ".2f"},
+        {"key": "num_write_iops", "header": "WIOPS",
+            "width": 8, "align": ">", "format": ".2f"},
+        {"key": "num_iops", "header": "IOPS",
+            "width": 8, "align": ">", "format": ".2f"}
+    ]
+)
+
+NODES_BANDWIDTH_REPORT_ARITHMOS_FIELDS = (
+    [
+        "node_name", "id",
+        "hypervisor_cpu_usage_ppm", "hypervisor_memory_usage_ppm",
+        "io_bandwidth_kBps",
+        "write_io_bandwidth_kBps", "read_io_bandwidth_kBps",
+        "avg_io_latency_usecs",
+        "avg_read_io_latency_usecs", "avg_write_io_latency_usecs",
+    ]
+)
+
+NODES_BANDWIDTH_REPORT_CLI_FIELDS = (
+    [
+        {"key": "node_name", "header": "Node",
+            "width": 20, "align": "<", "format": ".20"},
+        {"key": "hypervisor_cpu_usage_percent", "header": "CPU%",
+            "width": 6, "align": ">", "format": ".2f"},
+        {"key": "hypervisor_memory_usage_percent", "header": "MEM%",
+            "width": 6, "align": ">", "format": ".2f"},
+        {"key": "io_bandwidth_mBps",
+            "header": "B/W[MB]", "width": 8, "align": ">", "format": ".2f"},
+        {"key": "write_io_bandwidth_mBps",
+            "header": "WB/W[MB]", "width": 8, "align": ">", "format": ".2f"},
+        {"key": "read_io_bandwidth_mBps",
+            "header": "RB/W[MB]", "width": 8, "align": ">", "format": ".2f"},
+        {"key": "avg_io_latency_msecs",
+            "header": "LAT[ms]", "width": 8, "align": ">", "format": ".2f"},
+        {"key": "avg_read_io_latency_msecs",
+            "header": "RLAT[ms]", "width": 8, "align": ">", "format": ".2f"},
+        {"key": "avg_write_io_latency_msecs",
+            "header": "WLAT[ms]", "width": 8, "align": ">", "format": ".2f"}
     ]
 )
 
@@ -292,6 +371,8 @@ class NodeReporter(Reporter):
         the conversion in the reporters methods.
 
         As more stats for different reports are needed this list will grow.
+
+        At some point you need to do the dirty job : )
         """
         stats = self._get_node_live_stats(field_name_list=field_list,
                                           filter_criteria=filter_by)
@@ -308,20 +389,51 @@ class NodeReporter(Reporter):
             if hasattr(node_stat.stats, "hypervisor_memory_usage_ppm"):
                 node["hypervisor_memory_usage_percent"] = (
                     node_stat.stats.hypervisor_memory_usage_ppm / 10000)
-            if hasattr(node_stat.stats.common_stats, "controller_num_iops"):
-                node["controller_num_iops"] = (
-                    node_stat.stats.common_stats.controller_num_iops)
             if hasattr(node_stat.stats.common_stats, "hypervisor_num_iops"):
                 node["hypervisor_num_iops"] = (
                     node_stat.stats.common_stats.hypervisor_num_iops)
+            if hasattr(node_stat.stats.common_stats, "hypervisor_num_read_iops"):
+                node["hypervisor_num_read_iops"] = (
+                    node_stat.stats.common_stats.hypervisor_num_read_iops)
+            if hasattr(node_stat.stats.common_stats, "hypervisor_num_write_iops"):
+                node["hypervisor_num_write_iops"] = (
+                    node_stat.stats.common_stats.hypervisor_num_write_iops)
+            if hasattr(node_stat.stats.common_stats, "controller_num_iops"):
+                node["controller_num_iops"] = (
+                    node_stat.stats.common_stats.controller_num_iops)
+            if hasattr(node_stat.stats.common_stats, "controller_num_read_iops"):
+                node["controller_num_read_iops"] = (
+                    node_stat.stats.common_stats.controller_num_read_iops)
+            if hasattr(node_stat.stats.common_stats, "controller_num_write_iops"):
+                node["controller_num_write_iops"] = (
+                    node_stat.stats.common_stats.controller_num_write_iops)
             if hasattr(node_stat.stats.common_stats, "num_iops"):
-                node["num_iops"] = (node_stat.stats.common_stats.num_iops)
-            if hasattr(node_stat.stats.common_stats, "avg_io_latency_usecs"):
-                node["avg_io_latency_msecs"] = (
-                    node_stat.stats.common_stats.avg_io_latency_usecs / 1000)
+                node["num_iops"] = (
+                    node_stat.stats.common_stats.num_iops)
+            if hasattr(node_stat.stats.common_stats, "num_read_iops"):
+                node["num_read_iops"] = (
+                    node_stat.stats.common_stats.num_read_iops)
+            if hasattr(node_stat.stats.common_stats, "num_write_iops"):
+                node["num_write_iops"] = (
+                    node_stat.stats.common_stats.num_write_iops)
             if hasattr(node_stat.stats.common_stats, "io_bandwidth_kBps"):
                 node["io_bandwidth_mBps"] = float(
                     node_stat.stats.common_stats.io_bandwidth_kBps / 1024)
+            if hasattr(node_stat.stats.common_stats, "read_io_bandwidth_kBps"):
+                node["read_io_bandwidth_mBps"] = float(
+                    node_stat.stats.common_stats.read_io_bandwidth_kBps / 1024)
+            if hasattr(node_stat.stats.common_stats, "write_io_bandwidth_kBps"):
+                node["write_io_bandwidth_mBps"] = float(
+                    node_stat.stats.common_stats.write_io_bandwidth_kBps / 1024)
+            if hasattr(node_stat.stats.common_stats, "avg_io_latency_usecs"):
+                node["avg_io_latency_msecs"] = (
+                    node_stat.stats.common_stats.avg_io_latency_usecs / 1000)
+            if hasattr(node_stat.stats.common_stats, "avg_read_io_latency_usecs"):
+                node["avg_read_io_latency_msecs"] = (
+                    node_stat.stats.common_stats.avg_read_io_latency_usecs / 1000)
+            if hasattr(node_stat.stats.common_stats, "avg_write_io_latency_usecs"):
+                node["avg_write_io_latency_msecs"] = (
+                    node_stat.stats.common_stats.avg_write_io_latency_usecs / 1000)
             nodes_stats_dic.append(node)
         return nodes_stats_dic
 
@@ -333,6 +445,8 @@ class NodeReporter(Reporter):
         This is a helper for reporters methods. generating here
         the dictionary that is returned to Ui classes avoid to duplicate
         the conversion in the reporters methods.
+
+        At some point you need to do the dirty job : )
         """
         sampling_interval = 30
         nodes_stats_dic = []
@@ -352,16 +466,40 @@ class NodeReporter(Reporter):
                         node_pivot.id, "hypervisor_memory_usage_ppm", start, end,
                         sampling_interval) / 10000
                 )
+            if "hypervisor_num_iops" in field_list:
+                node["hypervisor_num_iops"] = (
+                    self._get_time_range_stat_average(
+                        node_pivot.id, "hypervisor_num_iops", start, end,
+                        sampling_interval)
+                )
+            if "hypervisor_num_read_iops" in field_list:
+                node["hypervisor_num_read_iops"] = (
+                    self._get_time_range_stat_average(
+                        node_pivot.id, "hypervisor_num_read_iops", start, end,
+                        sampling_interval)
+                )
+            if "hypervisor_num_write_iops" in field_list:
+                node["hypervisor_num_write_iops"] = (
+                    self._get_time_range_stat_average(
+                        node_pivot.id, "hypervisor_num_iops", start, end,
+                        sampling_interval)
+                )
             if "controller_num_iops" in field_list:
                 node["controller_num_iops"] = (
                     self._get_time_range_stat_average(
                         node_pivot.id, "controller_num_iops", start, end,
                         sampling_interval)
                 )
-            if "hypervisor_num_iops" in field_list:
-                node["hypervisor_num_iops"] = (
+            if "controller_num_read_iops" in field_list:
+                node["controller_num_read_iops"] = (
                     self._get_time_range_stat_average(
-                        node_pivot.id, "hypervisor_num_iops", start, end,
+                        node_pivot.id, "controller_num_read_iops", start, end,
+                        sampling_interval)
+                )
+            if "controller_num_write_iops" in field_list:
+                node["controller_num_write_iops"] = (
+                    self._get_time_range_stat_average(
+                        node_pivot.id, "controller_num_write_iops", start, end,
                         sampling_interval)
                 )
             if "num_iops" in field_list:
@@ -369,17 +507,51 @@ class NodeReporter(Reporter):
                     int(self._get_time_range_stat_average(
                         node_pivot.id, "num_iops", start, end, sampling_interval))
                 )
-            if "avg_io_latency_usecs" in field_list:
-                node["avg_io_latency_msecs"] = (
-                    self._get_time_range_stat_average(
-                        node_pivot.id, "avg_io_latency_usecs", start, end,
-                        sampling_interval) / 1000
+            if "num_read_iops" in field_list:
+                node["num_read_iops"] = (
+                    int(self._get_time_range_stat_average(
+                        node_pivot.id, "num_read_iops", start, end, sampling_interval))
+                )
+            if "num_write_iops" in field_list:
+                node["num_write_iops"] = (
+                    int(self._get_time_range_stat_average(
+                        node_pivot.id, "num_write_iops", start, end, sampling_interval))
                 )
             if "io_bandwidth_kBps" in field_list:
                 node["io_bandwidth_mBps"] = (
                     self._get_time_range_stat_average(
                         node_pivot.id, "io_bandwidth_kBps", start, end,
                         sampling_interval) / 1024
+                )
+            if "read_io_bandwidth_kBps" in field_list:
+                node["read_io_bandwidth_mBps"] = (
+                    self._get_time_range_stat_average(
+                        node_pivot.id, "read_io_bandwidth_kBps", start, end,
+                        sampling_interval) / 1024
+                )
+            if "write_io_bandwidth_kBps" in field_list:
+                node["write_io_bandwidth_mBps"] = (
+                    self._get_time_range_stat_average(
+                        node_pivot.id, "write_io_bandwidth_kBps", start, end,
+                        sampling_interval) / 1024
+                )
+            if "avg_io_latency_usecs" in field_list:
+                node["avg_io_latency_msecs"] = (
+                    self._get_time_range_stat_average(
+                        node_pivot.id, "avg_io_latency_usecs", start, end,
+                        sampling_interval) / 1000
+                )
+            if "avg_read_io_latency_usecs" in field_list:
+                node["avg_read_io_latency_msecs"] = (
+                    self._get_time_range_stat_average(
+                        node_pivot.id, "avg_read_io_latency_usecs", start, end,
+                        sampling_interval) / 1000
+                )
+            if "avg_write_io_latency_usecs" in field_list:
+                node["avg_write_io_latency_msecs"] = (
+                    self._get_time_range_stat_average(
+                        node_pivot.id, "avg_write_io_latency_usecs", start, end,
+                        sampling_interval) / 1000
                 )
             nodes_stats_dic.append(node)
         return nodes_stats_dic
@@ -410,6 +582,21 @@ class NodeReporter(Reporter):
         """
         ret = self._get_time_range_stats_dic(
             NODES_OVERALL_REPORT_ARITHMOS_FIELDS, start, end)
+        return self._sort_entity_dict(ret, sort)
+
+    def iops_live_report(self, sort="name"):
+        """
+        Returns a sorted dictionary with extended node stats.
+        """
+        ret = self._get_live_stats_dic(NODES_IOPS_REPORT_ARITHMOS_FIELDS)
+        return self._sort_entity_dict(ret, sort)
+
+    def iops_time_range_report(self, start, end, sort="name", nodes=[]):
+        """
+        Returns a sorted dictionary with time range overall node stats.
+        """
+        ret = self._get_time_range_stats_dic(
+            NODES_IOPS_REPORT_ARITHMOS_FIELDS, start, end)
         return self._sort_entity_dict(ret, sort)
 
 
@@ -673,7 +860,8 @@ class UiCli(Ui):
     """CLI interface"""
 
     def _report_format_printer(self, field_list, entity_list, str_time):
-
+        """
+        """
         header_format_string = ""
         entity_format_string = ""
         for i in range(len(field_list)):
@@ -710,8 +898,9 @@ class UiCli(Ui):
                   entity_format_string.format(*entity_stat_list))
 
         print("")
+        return True
 
-    def nodes_overall_live_report(self, sec, count, sort="name"):
+    def nodes_overall_live_report(self, sec, count, sort="name", type="overall"):
         """
         Print nodes overall live report.
         """
@@ -724,9 +913,15 @@ class UiCli(Ui):
         for i in range(count):
             time.sleep(sec)
             time_now = datetime.datetime.now().strftime("%Y/%m/%d-%H:%M:%S")
-            entity_list = self.node_reporter.overall_live_report(sort)
-            self._report_format_printer(
-                NODES_OVERALL_REPORT_CLI_FIELDS, entity_list, time_now)
+            if type == "overall":
+                entity_list = self.node_reporter.overall_live_report(sort)
+                self._report_format_printer(
+                    NODES_OVERALL_REPORT_CLI_FIELDS, entity_list, time_now)
+            elif type == "iops":
+                entity_list = self.node_reporter.iops_live_report(sort)
+                self._report_format_printer(
+                    NODES_IOPS_REPORT_CLI_FIELDS, entity_list, time_now)
+
         return True
 
     def nodes_overall_time_range_report(self, start_time, end_time, sec=None,
@@ -1346,6 +1541,9 @@ if __name__ == "__main__":
                             choices=["name", "cpu", "rdy", "mem",
                                      "iops", "bw", "lat"],
                             default="name", help="Sort output")
+        parser.add_argument('--report-type', '-t',
+                            choices=["iops", "bw", "lat"],
+                            default="overall", help="Report type")
         parser.add_argument("-start-time", "-S",
                             help="Start time in format YYYY/MM/DD-hh:mm:ss. "
                             "Specified in local time.",
@@ -1356,7 +1554,7 @@ if __name__ == "__main__":
                             type=valid_date)
         parser.add_argument('--export', '-e', action='store_true',
                             help="Export data to files in line protocol")
-        parser.add_argument('--test', '-t', action='store_true',
+        parser.add_argument('--test', action='store_true',
                             help="Place holder for testing new features")
         parser.add_argument('sec', type=int, nargs="?", default=None,
                             help="Interval in seconds")
@@ -1370,7 +1568,7 @@ if __name__ == "__main__":
 
                 if not args.start_time and not args.end_time:
                     ui_cli.nodes_overall_live_report(
-                        args.sec, args.count, args.sort)
+                        args.sec, args.count, args.sort, args.report_type)
                 elif args.start_time and args.end_time:
                     ui_cli.nodes_overall_time_range_report(args.start_time,
                                                            args.end_time,
