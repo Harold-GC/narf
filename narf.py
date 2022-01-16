@@ -634,7 +634,7 @@ class Ui(object):
 class UiCli(Ui):
     """CLI interface"""
 
-    def _report_format_printer(self, field_list, entity_list, time):
+    def _report_format_printer(self, field_list, entity_list, str_time):
 
         header_format_string = ""
         entity_format_string = ""
@@ -659,7 +659,7 @@ class UiCli(Ui):
 
         BOLD = '\033[1m'
         END = '\033[0m'
-        print((BOLD + time + " | " +
+        print((BOLD + str_time + " | " +
                header_format_string + END).format(*header_list))
 
         for entity in entity_list:
@@ -668,12 +668,15 @@ class UiCli(Ui):
                 stat_key = field_list[i]["key"]
                 stat_value = entity[stat_key]
                 entity_stat_list.append(stat_value)
-            print(time + " | " +
+            print(str_time + " | " +
                   entity_format_string.format(*entity_stat_list))
 
         print("")
 
     def nodes_overall_live_report(self, sec, count, sort="name"):
+        """
+        Print nodes overall live report.
+        """
         if not sec or sec < 0:
             sec = 0
             count = 1
@@ -700,36 +703,19 @@ class UiCli(Ui):
             while step_time < end_time:
                 usec_step = int(step_time.strftime("%s") + "000000")
                 usec_delta = int(delta_time.strftime("%s") + "000000")
-                nodes = self.node_reporter.overall_time_range_report(
+
+                entity_list = self.node_reporter.overall_time_range_report(
                     usec_step, usec_delta, sort)
-                print("{time:<21} {node:<20} {cpu:>6} {mem:>6} "
-                      "{ciops:>8} {hiops:>8} {iops:>8} {bw:>8} "
-                      "{lat:>8}".format(
-                          time=step_time.strftime("%Y/%m/%d-%H:%M:%S"),
-                          node="Node",
-                          cpu="CPU%",
-                          mem="MEM%",
-                          ciops="cIOPs",
-                          hiops="hIOPs",
-                          iops="IOPs",
-                          bw="B/W[MB]",
-                          lat="LAT[ms]"))
-                for node in nodes:
-                    print("{time:<21} "
-                          "{node_name:<20} "
-                          "{n[hypervisor_cpu_usage_percent]:>6.2f} "
-                          "{n[hypervisor_memory_usage_percent]:>6.2f} "
-                          "{n[controller_num_iops]:>8.2f} "
-                          "{n[hypervisor_num_iops]:>8.2f} "
-                          "{n[num_iops]:>8.2f} "
-                          "{n[io_bandwidth_mBps]:>8.2f} "
-                          "{n[avg_io_latency_msecs]:>8.2f} "
-                          .format(time=step_time.strftime("%Y/%m/%d-%H:%M:%S"),
-                                  n=node,
-                                  node_name=node["node_name"][:20]))
-                print("")
+                self._report_format_printer(
+                    NODES_OVERALL_REPORT_FIELDS,
+                    entity_list,
+                    step_time.strftime("%Y/%m/%d-%H:%M:%S")
+                )
+
                 step_time = delta_time
                 delta_time += datetime.timedelta(seconds=sec)
+            return True
+        return False
 
     def uvms_overall_live_report(self, sec, count, sort="name", node_names=[]):
         if not sec or sec < 0:
