@@ -331,8 +331,8 @@ class Reporter(object):
         stats. If a stat in the desired list is missing from the stat list
         then it add it with a value of 0 and returns a new list.
 
-        TODO: There may be a better way to do this.
-              Review if this is valid.
+        TODO: This is unnecessary, review this method for removal. If so this needs
+              to be done in Ui not in reporter.
         """
         for desired_stat in desired_stat_list:
             if desired_stat not in stats:
