@@ -231,25 +231,25 @@ NODES_LATENCY_REPORT_CLI_FIELDS = (
             "width": 6, "align": ">", "format": ".2f"},
 
         {"key": "hypervisor_avg_io_latency_msecs",
-            "header": "hLAT[ms]", "width": 8, "align": ">", "format": ".2f"},
+            "header": "hLAT[ms]", "width": 9, "align": ">", "format": ".2f"},
         {"key": "hypervisor_avg_read_io_latency_msecs",
-            "header": "hRLAT[ms]", "width": 8, "align": ">", "format": ".2f"},
+            "header": "hRLAT[ms]", "width": 9, "align": ">", "format": ".2f"},
         {"key": "hypervisor_avg_write_io_latency_msecs",
-            "header": "hWLAT[ms]", "width": 8, "align": ">", "format": ".2f"},
+            "header": "hWLAT[ms]", "width": 9, "align": ">", "format": ".2f"},
 
         {"key": "controller_avg_io_latency_msecs",
-            "header": "cLAT[ms]", "width": 8, "align": ">", "format": ".2f"},
+            "header": "cLAT[ms]", "width": 9, "align": ">", "format": ".2f"},
         {"key": "controller_avg_read_io_latency_msecs",
-            "header": "cRLAT[ms]", "width": 8, "align": ">", "format": ".2f"},
+            "header": "cRLAT[ms]", "width": 9, "align": ">", "format": ".2f"},
         {"key": "controller_avg_write_io_latency_msecs",
-            "header": "cWLAT[ms]", "width": 8, "align": ">", "format": ".2f"},
+            "header": "cWLAT[ms]", "width": 9, "align": ">", "format": ".2f"},
 
         {"key": "avg_io_latency_msecs",
-            "header": "LAT[ms]", "width": 8, "align": ">", "format": ".2f"},
+            "header": "LAT[ms]", "width": 9, "align": ">", "format": ".2f"},
         {"key": "avg_read_io_latency_msecs",
-            "header": "RLAT[ms]", "width": 8, "align": ">", "format": ".2f"},
+            "header": "RLAT[ms]", "width": 9, "align": ">", "format": ".2f"},
         {"key": "avg_write_io_latency_msecs",
-            "header": "WLAT[ms]", "width": 8, "align": ">", "format": ".2f"}
+            "header": "WLAT[ms]", "width": 9, "align": ">", "format": ".2f"}
     ]
 )
 
@@ -1148,7 +1148,6 @@ class UiCli(Ui):
                                      field_list[i]["format"] +
                                      "} "
                                      )
-
         header_list = []
         for i in range(len(field_list)):
             header_list.append(field_list[i]["header"])
