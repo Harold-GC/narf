@@ -448,7 +448,22 @@ class NodeReporter(Reporter):
 
         As more stats for different reports are needed this list will grow.
 
-        At some point you need to do the dirty job : )
+        TODO: Need to fix this. A better solution may be to iterate over 
+              field_list and process based on a name pattern. For example:
+
+               - if name has "ppm" divide by 10000
+               - if name has "iops" just pass the name
+               - if name has "kBps" divide by 1024
+               - if name has "usec" divide by 1000
+               - if the name doesn't match any pattern just pass add it
+                 to the dictionary as it is.
+
+             and change keys accordingly.
+
+             The following serie of if statements will be reduced to an acceptable
+             number of 5.
+
+             I will do this on VmNodes and come back here to fix it.
         """
         stats = self._get_node_live_stats(field_name_list=field_list,
                                           filter_criteria=filter_by)
@@ -567,7 +582,22 @@ class NodeReporter(Reporter):
         the dictionary that is returned to Ui classes avoid to duplicate
         the conversion in the reporters methods.
 
-        At some point you need to do the dirty job : )
+        TODO: Need to fix this. A better solution may be to iterate over 
+              field_list and process based on a name pattern. For example:
+
+               - if name has "ppm" divide by 10000
+               - if name has "iops" just pass the name
+               - if name has "kBps" divide by 1024
+               - if name has "usec" divide by 1000
+               - if the name doesn't match any pattern just pass add it
+                 to the dictionary as it is.
+
+             and change keys accordingly.
+
+             The following serie of if statements will be reduced to an acceptable
+             number of 5.
+
+             I will do this on VmNodes and come back here to fix it.
         """
         sampling_interval = 30
         nodes_stats_dic = []
