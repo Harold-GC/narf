@@ -370,8 +370,8 @@ class Reporter(object):
         attributes. If a attribute in the desired list is missing from the attribute list
         then it add it with a value of "-" and returns a new list.
 
-        TODO: There may be a better way to do this.
-              Review if this is valid.
+        TODO: This is unnecessary, review this method for removal. If so this needs
+              to be done in Ui not in reporter.
         """
         for desired_attribute in desired_attribute_list:
             if desired_attribute not in attributes:
