@@ -939,7 +939,7 @@ class VmReporter(Reporter):
         entity_list = response.entity_list.vm
         return entity_list
 
-    def _parse_entity_list_to_dict(self, stats):
+    def _get_live_stats_dic(self, field_list, filter_by="", sort_criteria=""):
         """
         Get an entity_list as returned from MasterGetEntitiesStats,
         parse the entities and stats to a dictinary that will be returned.
@@ -948,6 +948,49 @@ class VmReporter(Reporter):
         the dictionary that is returned to Ui classes avoid to duplicate
         the conversion in the reporters methods.
         """
+        entity_list = self._get_vm_live_stats(field_name_list=field_list,
+                                              filter_criteria=filter_by,
+                                              sort_criteria=sort_criteria)
+        # print(stats)
+        vm_nodes_stats_dic = []
+        for vm_entity in entity_list:
+            print("==============")
+            print(vm_entity)
+            vm_dict = {}
+            vm_dict["vm_id"] = vm_entity.id
+            if hasattr(vm_entity, "stats"):
+                stats = vm_entity.stats
+                if hasattr(stats, "common_stats"):
+                    for common_stat in stats.common_stats.DESCRIPTOR.fields:
+                        if common_stat.name in field_list:
+                            vm_dict[common_stat.name] = getattr(
+                                stats.common_stats, common_stat.name)
+                if hasattr(stats, "generic_stat_list"):
+                    for generic_stat in stats.generic_stat_list:
+                        vm_dict[generic_stat.stat_name] = generic_stat.stat_value
+            if hasattr(vm_entity, "generic_attribute_list"):
+                for generic_attr in vm_entity.generic_attribute_list:
+                    name = None
+                    value = None
+                    for field, _ in generic_attr.ListFields():
+                        if field.name == "attribute_name":
+                            name = str(getattr(generic_attr, field.name))
+                        elif field.name == "attribute_value_str":
+                            value = getattr(generic_attr, str(field.name))
+                        elif field.name == "attribute_value_int":
+                            value = getattr(generic_attr, field.name)
+                        elif hasattr(generic_attr, "attribute_value_str_list"):
+                            value = getattr(generic_attr, field.name)
+                    if name is not None and value is not None:
+                        vm_dict[name] = value
+            print(vm_dict)
+
+            #print("=== Commond Stats ================")
+            # for field in vm.stats.common_stats.DESCRIPTOR.fields:
+            #    print(field.name)
+            # for stat in vm.stats.generic_stat_list:
+            #    print(stat)
+            # print(vm)
 
     def overall_live_report(self, sort="name", node_names=[]):
         field_names = ["vm_name", "id", "node_name",
@@ -970,6 +1013,9 @@ class VmReporter(Reporter):
             node_names_str = ",".join(["node_name==" + node_name
                                        for node_name in node_names])
             filter_by += ";" + node_names_str
+
+        # self._get_live_stats_dic(
+        #    field_names, filter_by, sort_criteria=sort_by_arithmos)
 
         stats = self._get_vm_live_stats(field_name_list=field_names,
                                         filter_criteria=filter_by,
