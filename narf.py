@@ -915,7 +915,7 @@ class VmReporter(Reporter):
         self.sort_conversion = {
             "name": "vm_name",
             "cpu": "hypervisor_cpu_usage_percent",
-            "rdy": "hypervisor_cpu_ready_time_percent",
+            "rdy": "hypervisor.cpu_ready_time_percent",
             "mem": "memory_usage_percent",
             "iops": "controller_num_iops",
             "bw": "controller_io_bandwidth_mBps",
@@ -925,6 +925,7 @@ class VmReporter(Reporter):
         self.sort_conversion_arithmos = {
             "name": "vm_name",
             "cpu": "-hypervisor_cpu_usage_ppm",
+            "rdy": "hypervisor.cpu_ready_time_ppm",
             "mem": "-memory_usage_ppm",
             "iops": "-controller_num_iops",
             "bw": "-controller_io_bandwidth_kBps",
@@ -939,6 +940,36 @@ class VmReporter(Reporter):
         entity_list = response.entity_list.vm
         return entity_list
 
+    def _stats_unit_conversion(self, stats_dic):
+        """
+        Receive a dictionary of stats and makes the name and unit conversion.
+        Is used to return a dictionary to UIs with the stats in desired units
+        and names. For example:
+
+        Arithmos stat memory_usage_ppm is changed to memory_usage_percent, and
+        the value is changed from parts per million to percentage.
+
+        It uses the stat names to identify the current unit value and change it
+        to an arbitrary desired unit.
+        """
+        ret = {}
+        for key in stats_dic.keys():
+            if "ppm" in key:
+                new_key = key.replace("ppm", "percent")
+                new_value = stats_dic[key] / 10000
+                ret[new_key] = new_value
+            elif "kBps" in key:
+                new_key = key.replace("kBps", "mBps")
+                new_value = stats_dic[key] / 1024
+                ret[new_key] = new_value
+            elif "usecs" in key:
+                new_key = key.replace("usecs", "msecs")
+                new_value = stats_dic[key] / 1000
+                ret[new_key] = new_value
+            else:
+                ret[key] = stats_dic[key]
+        return ret
+
     def _get_live_stats_dic(self, field_list, filter_by="", sort_criteria=""):
         """
         Get an entity_list as returned from MasterGetEntitiesStats,
@@ -951,12 +982,12 @@ class VmReporter(Reporter):
         entity_list = self._get_vm_live_stats(field_name_list=field_list,
                                               filter_criteria=filter_by,
                                               sort_criteria=sort_criteria)
-        vm_nodes_stats_dic = []
+        vm_stats_dic = []
+
         for vm_entity in entity_list:
             vm_dict = {}
-
             vm_dict["vm_id"] = vm_entity.id
-            vm_dict["vm_name"] = vm_entity.vm_name
+            vm_dict["vm_name"] = str(vm_entity.vm_name)
 
             if hasattr(vm_entity, "stats"):
                 stats = vm_entity.stats
@@ -993,6 +1024,10 @@ class VmReporter(Reporter):
                             value = getattr(tmp_generic_attr, field.name)
                     if name is not None and value is not None:
                         vm_dict[name] = value
+            vm_dict = self._stats_unit_conversion(vm_dict)
+            vm_stats_dic.append(vm_dict)
+
+        return vm_stats_dic
 
     def overall_live_report(self, sort="name", node_names=[]):
         field_names = ["vm_name", "id", "node_name",
@@ -1016,61 +1051,13 @@ class VmReporter(Reporter):
                                        for node_name in node_names])
             filter_by += ";" + node_names_str
 
-        self._get_live_stats_dic(
+        vm_entities = self._get_live_stats_dic(
             field_names, filter_by, sort_criteria=sort_by_arithmos)
 
-        stats = self._get_vm_live_stats(field_name_list=field_names,
-                                        filter_criteria=filter_by,
-                                        sort_criteria=sort_by_arithmos)
-
-        all_vms = []
-        for vm_stat in stats:
-
-            # Convert a known list of generic_stats into a dictionary
-            generic_stats = self._get_generic_stats_dict(
-                vm_stat.stats.generic_stat_list)
-            generic_stat_names = ["memory_usage_ppm",
-                                  "hypervisor.cpu_ready_time_ppm"]
-            generic_stats = self._zeroed_missing_stats(generic_stats,
-                                                       generic_stat_names)
-
-            # Convert a known list of generic_attributes into a dictionary
-            generic_attributes = self._get_generic_attribute_dict(
-                vm_stat.generic_attribute_list)
-            generic_attribute_names = ["node_name"]
-            generic_attributes = self._zeroed_missing_attribute(generic_attributes,
-                                                                generic_attribute_names)
-
-            # I don't know which other stats might be missing from the data returned
-            # from Arithmos, so more workarounds like previous one may be needed
-            # in the future.
-            # Function _zeroed_missing_stats() should work for most cases.
-            vm = {
-                "vm_name": vm_stat.vm_name,
-                "node_name": generic_attributes["node_name"],
-                "hypervisor_cpu_usage_percent":
-                vm_stat.stats.hypervisor_cpu_usage_ppm / 10000,
-                "hypervisor_cpu_ready_time_percent":
-                generic_stats["hypervisor.cpu_ready_time_ppm"] / 10000,
-                "memory_usage_percent":
-                generic_stats["memory_usage_ppm"] / 10000,
-                "controller_num_iops":
-                vm_stat.stats.common_stats.controller_num_iops,
-                "hypervisor_num_iops":
-                vm_stat.stats.common_stats.hypervisor_num_iops,
-                "num_iops":
-                vm_stat.stats.common_stats.num_iops,
-                "controller_io_bandwidth_mBps":
-                vm_stat.stats.common_stats.controller_io_bandwidth_kBps / 1024,
-                "controller_avg_io_latency_msecs":
-                vm_stat.stats.common_stats.controller_avg_io_latency_usecs / 1000
-            }
-            all_vms.append(vm)
-
         if sort_by == "vm_name":
-            return sorted(all_vms, key=lambda node: node[sort_by])
+            return sorted(vm_entities, key=lambda node: node[sort_by])
         else:
-            return sorted(all_vms, key=lambda node: node[sort_by], reverse=True)
+            return sorted(vm_entities, key=lambda node: node[sort_by], reverse=True)
 
     def overall_time_range_report(self, start, end, sort="name", node_names=[]):
         if sort in self.sort_conversion.keys():
@@ -1119,7 +1106,7 @@ class VmReporter(Reporter):
                 self._get_time_range_stat_average(
                     vm.id, "hypervisor_cpu_usage_ppm", start, end,
                     sampling_interval) / 10000,
-                "hypervisor_cpu_ready_time_percent":
+                "hypervisor.cpu_ready_time_percent":
                 self._get_time_range_stat_average(
                     vm.id, "hypervisor.cpu_ready_time_ppm", start, end,
                     sampling_interval) / 10000,
@@ -1372,7 +1359,7 @@ class UiCli(Ui):
             for vm in vms:
                 print("{0:<11} {vm_name:<30} "
                       "{v[hypervisor_cpu_usage_percent]:>6.2f} "
-                      "{v[hypervisor_cpu_ready_time_percent]:>6.2f} "
+                      "{v[hypervisor.cpu_ready_time_percent]:>6.2f} "
                       "{v[memory_usage_percent]:>6.2f} "
                       "{v[controller_num_iops]:>6} "
                       "{v[hypervisor_num_iops]:>6} "
@@ -1415,7 +1402,7 @@ class UiCli(Ui):
                 for vm in vms:
                     print("{time:<21} {vm_name:<30} "
                           "{v[hypervisor_cpu_usage_percent]:>6.2f} "
-                          "{v[hypervisor_cpu_ready_time_percent]:>6.2f} "
+                          "{v[hypervisor.cpu_ready_time_percent]:>6.2f} "
                           "{v[memory_usage_percent]:>6.2f} "
                           "{v[controller_num_iops]:>6.0f} "
                           "{v[hypervisor_num_iops]:>6.0f} "
@@ -1736,7 +1723,7 @@ class UiInteractive(Ui):
             self.vm_overall_pad.addstr(i + 2, 1,
                                        " {vm_name:<30} "
                                        "{v[hypervisor_cpu_usage_percent]:>6.2f} "
-                                       "{v[hypervisor_cpu_ready_time_percent]:>6.2f} "
+                                       "{v[hypervisor.cpu_ready_time_percent]:>6.2f} "
                                        "{v[memory_usage_percent]:>6.2f} "
                                        "{v[controller_num_iops]:>6} "
                                        "{v[hypervisor_num_iops]:>6} "
@@ -1862,7 +1849,7 @@ class UiExporter(Ui):
                               "exportId={export_id},"
                               "nodeName={v[node_name]} "
                               "hypervisorCpuUsagePercent={v[hypervisor_cpu_usage_percent]:.2f},"
-                              "hypervisorCpuReadyTimePercent={v[hypervisor_cpu_ready_time_percent]:.2f},"
+                              "hypervisorCpuReadyTimePercent={v[hypervisor.cpu_ready_time_percent]:.2f},"
                               "memoryUsagePercent={v[memory_usage_percent]:.2f},"
                               "controllerNumIops={v[controller_num_iops]:.0f},"
                               "hypervisorNumIops={v[hypervisor_num_iops]:.0f},"
