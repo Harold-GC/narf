@@ -986,7 +986,7 @@ class VmReporter(Reporter):
 
         for vm_entity in entity_list:
             vm_dict = {}
-            vm_dict["vm_id"] = vm_entity.id
+            vm_dict["id"] = vm_entity.id
             vm_dict["vm_name"] = str(vm_entity.vm_name)
 
             if hasattr(vm_entity, "stats"):
@@ -1054,6 +1054,30 @@ class VmReporter(Reporter):
         vm_entities = self._get_live_stats_dic(
             field_names, filter_by, sort_criteria=sort_by_arithmos)
 
+        # TODO: Work better on this. When there is no data arithmos doesn't return
+        #       generic_stats.
+        generic_stat_names = ["memory_usage_percent",
+                              "hypervisor.cpu_ready_time_percent"]
+        for vm in vm_entities:
+            for generic_stat in generic_stat_names:
+                if not generic_stat in vm.keys():
+                    vm[generic_stat] = -1
+
+        # generic_stats = self._get_generic_stats_dict(
+        #    vm_stat.stats.generic_stat_list)
+        # generic_stat_names = ["memory_usage_ppm",
+        #                      "hypervisor.cpu_ready_time_ppm"]
+        # generic_stats = self._zeroed_missing_stats(generic_stats,
+        #                                           generic_stat_names)
+        #
+        # generic_attributes = self._get_generic_attribute_dict(
+        #    vm_stat.generic_attribute_list)
+        #generic_attribute_names = ["node_name"]
+        # generic_attributes = self._zeroed_missing_attribute(generic_attributes,
+        #                                                    generic_attribute_names)
+        # generic_attributes = self._zeroed_missing_attribute(generic_attributes,
+        #                                                    generic_attribute_names)
+
         if sort_by == "vm_name":
             return sorted(vm_entities, key=lambda node: node[sort_by])
         else:
@@ -1100,7 +1124,7 @@ class VmReporter(Reporter):
 
             vm = {
                 "vm_name": vm.vm_name,
-                "vm_id": vm.id,
+                "id": vm.id,
                 "node_name": generic_attributes["node_name"],
                 "hypervisor_cpu_usage_percent":
                 self._get_time_range_stat_average(
@@ -1844,7 +1868,7 @@ class UiExporter(Ui):
             export_file.write("vm,"
                               "clusterId={cluster_id},"
                               "clusterName={cluster_name},"
-                              "entityId={v[vm_id]},"
+                              "entityId={v[id]},"
                               "entityName={vm_name},"
                               "exportId={export_id},"
                               "nodeName={v[node_name]} "
