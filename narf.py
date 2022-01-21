@@ -68,11 +68,16 @@ from serviceability.interface.analytics.arithmos_rpc_client import (
 #                        | [...]
 #
 #
-# TODO: Move report fields definitions to a config file!!!!
+# TODO: Move report fields definitions to a config file.
 # TODO: Classes should also be splitted in modules, at least one module
 #       for reporters and one for Ui's needs to be created.
+# TODO: Think about merging arithmo and CLI stats. This will help in a
+#       simple report definitaion language for the framework.
 #
 # ~~~ ~~~
+
+# ========================================================================
+# Definition of Nodes reports.
 NODES_OVERALL_REPORT_ARITHMOS_FIELDS = (
     [
         "node_name", "id", "hypervisor_cpu_usage_ppm",
@@ -81,7 +86,6 @@ NODES_OVERALL_REPORT_ARITHMOS_FIELDS = (
         "io_bandwidth_kBps", "avg_io_latency_usecs"
     ]
 )
-
 
 NODES_OVERALL_REPORT_CLI_FIELDS = (
     [
@@ -253,6 +257,22 @@ NODES_LATENCY_REPORT_CLI_FIELDS = (
     ]
 )
 
+# ========================================================================
+# Definition of VM reports.
+VM_OVERALL_REPORT_ARITHMOS_FIELDS = (
+    [
+        "vm_name", "id", "node_name",
+        "hypervisor_cpu_usage_ppm",
+        "hypervisor.cpu_ready_time_ppm",
+        "memory_usage_ppm", "controller_num_iops",
+        "hypervisor_num_iops", "num_iops",
+        "controller_io_bandwidth_kBps",
+        "controller_avg_io_latency_usecs"
+    ]
+)
+
+# ========================================================================
+
 
 class Reporter(object):
     """Reporter base """
@@ -300,6 +320,109 @@ class Reporter(object):
             if sum > 0:
                 return sum / counter
         return -1
+
+    def _stats_unit_conversion(self, stats_dic):
+        """
+        Receive a dictionary of stats and makes the name and unit conversion.
+        Is used to return a dictionary to UIs with the stats in desired units
+        and names. For example:
+
+        Arithmos stat memory_usage_ppm is changed to memory_usage_percent, and
+        the value is changed from parts per million to percentage.
+
+        It uses the stat names to identify the current unit value and change it
+        to an arbitrary desired unit.
+        """
+        ret = {}
+        for key in stats_dic.keys():
+            new_key = ""
+            if "ppm" in key:
+                new_key = key.replace("ppm", "percent")
+                new_value = stats_dic[key] / 10000
+                ret[new_key] = new_value
+            elif "kBps" in key:
+                new_key = key.replace("kBps", "mBps")
+                new_value = stats_dic[key] / 1024
+                ret[new_key] = new_value
+            elif "usecs" in key:
+                new_key = key.replace("usecs", "msecs")
+                new_value = stats_dic[key] / 1000
+                ret[new_key] = new_value
+            else:
+                new_key = key
+                ret[new_key] = stats_dic[new_key]
+
+            # Arithmos returns -1 when there is no value for a given stat
+            # here we set back to -1 if we divided in the previos statements.
+            if ret[new_key] < 0:
+                ret[new_key] = -1
+
+        return ret
+
+    def _get_live_stats_dic(self, field_list, filter_by="", sort_criteria=""):
+        """
+        Get an entity_list as returned from MasterGetEntitiesStats,
+        parse the entities and stats to a dictinary that will be returned.
+
+        This is a helper for reporters methods. generating here
+        the dictionary that is returned to Ui classes avoid to duplicate
+        the conversion in the reporters methods.
+        """
+        entity_list = self._get_vm_live_stats(field_name_list=field_list,
+                                              filter_criteria=filter_by,
+                                              sort_criteria=sort_criteria)
+        entity_stats_dic = []
+
+        for vm_entity in entity_list:
+            entity_dict = {}
+            entity_dict["id"] = vm_entity.id
+            entity_dict["vm_name"] = str(vm_entity.vm_name)
+
+            if hasattr(vm_entity, "stats"):
+                stats = vm_entity.stats
+
+                for tmp_stat in stats.DESCRIPTOR.fields:
+                    if (tmp_stat.name != "common_stats" and
+                       tmp_stat.name != "generic_stat_list"):
+                        if tmp_stat.name in field_list:
+                            entity_dict[tmp_stat.name] = getattr(
+                                stats, tmp_stat.name)
+
+                if hasattr(stats, "common_stats"):
+                    for tmp_common_stat in stats.common_stats.DESCRIPTOR.fields:
+                        if tmp_common_stat.name in field_list:
+                            entity_dict[tmp_common_stat.name] = getattr(
+                                stats.common_stats, tmp_common_stat.name)
+
+                if hasattr(stats, "generic_stat_list"):
+                    for tmp_generic_stat in stats.generic_stat_list:
+                        entity_dict[tmp_generic_stat.stat_name] = tmp_generic_stat.stat_value
+
+            if hasattr(vm_entity, "generic_attribute_list"):
+                for tmp_generic_attr in vm_entity.generic_attribute_list:
+                    name = None
+                    value = None
+                    for field, _ in tmp_generic_attr.ListFields():
+                        if field.name == "attribute_name":
+                            name = str(getattr(tmp_generic_attr, field.name))
+                        elif field.name == "attribute_value_str":
+                            value = getattr(tmp_generic_attr, str(field.name))
+                        elif field.name == "attribute_value_int":
+                            value = getattr(tmp_generic_attr, field.name)
+                        elif hasattr(generic_attr, "attribute_value_str_list"):
+                            value = getattr(tmp_generic_attr, field.name)
+                    if name is not None and value is not None:
+                        entity_dict[name] = value
+
+            # Method returns a dictionary with all fields in field_list,
+            # if there is a field missing, populate with populated with -1.
+            for field in field_list:
+                if not field in entity_dict.keys():
+                    entity_dict[field] = -1
+
+            entity_dict = self._stats_unit_conversion(entity_dict)
+            entity_stats_dic.append(entity_dict)
+        return entity_stats_dic
 
     def _get_generic_stats_dict(self, generic_stat_list):
         """
@@ -940,36 +1063,6 @@ class VmReporter(Reporter):
         entity_list = response.entity_list.vm
         return entity_list
 
-    def _stats_unit_conversion(self, stats_dic):
-        """
-        Receive a dictionary of stats and makes the name and unit conversion.
-        Is used to return a dictionary to UIs with the stats in desired units
-        and names. For example:
-
-        Arithmos stat memory_usage_ppm is changed to memory_usage_percent, and
-        the value is changed from parts per million to percentage.
-
-        It uses the stat names to identify the current unit value and change it
-        to an arbitrary desired unit.
-        """
-        ret = {}
-        for key in stats_dic.keys():
-            if "ppm" in key:
-                new_key = key.replace("ppm", "percent")
-                new_value = stats_dic[key] / 10000
-                ret[new_key] = new_value
-            elif "kBps" in key:
-                new_key = key.replace("kBps", "mBps")
-                new_value = stats_dic[key] / 1024
-                ret[new_key] = new_value
-            elif "usecs" in key:
-                new_key = key.replace("usecs", "msecs")
-                new_value = stats_dic[key] / 1000
-                ret[new_key] = new_value
-            else:
-                ret[key] = stats_dic[key]
-        return ret
-
     def _get_live_stats_dic(self, field_list, filter_by="", sort_criteria=""):
         """
         Get an entity_list as returned from MasterGetEntitiesStats,
@@ -1024,20 +1117,18 @@ class VmReporter(Reporter):
                             value = getattr(tmp_generic_attr, field.name)
                     if name is not None and value is not None:
                         vm_dict[name] = value
+
+            # Method returns a dictionary with all fields in field_list,
+            # if there is a field missing, populate with populated with -1.
+            for field in field_list:
+                if not field in vm_dict.keys():
+                    vm_dict[field] = -1
+
             vm_dict = self._stats_unit_conversion(vm_dict)
             vm_stats_dic.append(vm_dict)
-
         return vm_stats_dic
 
     def overall_live_report(self, sort="name", node_names=[]):
-        field_names = ["vm_name", "id", "node_name",
-                       "hypervisor_cpu_usage_ppm",
-                       "hypervisor.cpu_ready_time_ppm",
-                       "memory_usage_ppm", "controller_num_iops",
-                       "hypervisor_num_iops", "num_iops",
-                       "controller_io_bandwidth_kBps",
-                       "controller_avg_io_latency_usecs"]
-
         if sort in self.sort_conversion.keys():
             sort_by = self.sort_conversion[sort]
             sort_by_arithmos = self.sort_conversion_arithmos[sort]
@@ -1052,31 +1143,8 @@ class VmReporter(Reporter):
             filter_by += ";" + node_names_str
 
         vm_entities = self._get_live_stats_dic(
-            field_names, filter_by, sort_criteria=sort_by_arithmos)
-
-        # TODO: Work better on this. When there is no data arithmos doesn't return
-        #       generic_stats.
-        generic_stat_names = ["memory_usage_percent",
-                              "hypervisor.cpu_ready_time_percent"]
-        for vm in vm_entities:
-            for generic_stat in generic_stat_names:
-                if not generic_stat in vm.keys():
-                    vm[generic_stat] = -1
-
-        # generic_stats = self._get_generic_stats_dict(
-        #    vm_stat.stats.generic_stat_list)
-        # generic_stat_names = ["memory_usage_ppm",
-        #                      "hypervisor.cpu_ready_time_ppm"]
-        # generic_stats = self._zeroed_missing_stats(generic_stats,
-        #                                           generic_stat_names)
-        #
-        # generic_attributes = self._get_generic_attribute_dict(
-        #    vm_stat.generic_attribute_list)
-        #generic_attribute_names = ["node_name"]
-        # generic_attributes = self._zeroed_missing_attribute(generic_attributes,
-        #                                                    generic_attribute_names)
-        # generic_attributes = self._zeroed_missing_attribute(generic_attributes,
-        #                                                    generic_attribute_names)
+            VM_OVERALL_REPORT_ARITHMOS_FIELDS,
+            filter_by, sort_criteria=sort_by_arithmos)
 
         if sort_by == "vm_name":
             return sorted(vm_entities, key=lambda node: node[sort_by])
