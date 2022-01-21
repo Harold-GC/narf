@@ -321,11 +321,11 @@ class Reporter(object):
                 return sum / counter
         return -1
 
-    def _stats_unit_conversion(self, stats_dic):
+    def _stats_unit_conversion(self, entities_dict):
         """
-        Receive a dictionary of stats and makes the name and unit conversion.
-        Is used to return a dictionary to UIs with the stats in desired units
-        and names. For example:
+        Receive a list of entity dictionaries with stats and makes the name
+        and unit conversion.  Is used to return a dictionary to UIs with the
+        stats in desired units and names. For example:
 
         Arithmos stat memory_usage_ppm is changed to memory_usage_percent, and
         the value is changed from parts per million to percentage.
@@ -333,96 +333,86 @@ class Reporter(object):
         It uses the stat names to identify the current unit value and change it
         to an arbitrary desired unit.
         """
-        ret = {}
-        for key in stats_dic.keys():
-            new_key = ""
-            if "ppm" in key:
-                new_key = key.replace("ppm", "percent")
-                new_value = stats_dic[key] / 10000
-                ret[new_key] = new_value
-            elif "kBps" in key:
-                new_key = key.replace("kBps", "mBps")
-                new_value = stats_dic[key] / 1024
-                ret[new_key] = new_value
-            elif "usecs" in key:
-                new_key = key.replace("usecs", "msecs")
-                new_value = stats_dic[key] / 1000
-                ret[new_key] = new_value
-            else:
-                new_key = key
-                ret[new_key] = stats_dic[new_key]
+        ret = []
+        for entity in entities_dict:
+            converted_entity = {}
+            for key in entity.keys():
+                new_key = ""
+                if "ppm" in key:
+                    new_key = key.replace("ppm", "percent")
+                    new_value = entity[key] / 10000
+                    converted_entity[new_key] = new_value
+                elif "kBps" in key:
+                    new_key = key.replace("kBps", "mBps")
+                    new_value = entity[key] / 1024
+                    converted_entity[new_key] = new_value
+                elif "usecs" in key:
+                    new_key = key.replace("usecs", "msecs")
+                    new_value = entity[key] / 1000
+                    converted_entity[new_key] = new_value
+                else:
+                    new_key = key
+                    converted_entity[new_key] = entity[new_key]
 
-            # Arithmos returns -1 when there is no value for a given stat
-            # here we set back to -1 if we divided in the previos statements.
-            if ret[new_key] < 0:
-                ret[new_key] = -1
+                # Set back to -1 if we divided in the previos statements.
+                # This is because arithmos returns -1 when there is no data.
+                if converted_entity[new_key] < 0:
+                    converted_entity[new_key] = -1
+            ret.append(converted_entity)
 
         return ret
 
-    def _get_live_stats_dic(self, field_list, filter_by="", sort_criteria=""):
+    def _get_entity_stats_from_proto(self, entity, field_list):
         """
-        Get an entity_list as returned from MasterGetEntitiesStats,
-        parse the entities and stats to a dictinary that will be returned.
-
-        This is a helper for reporters methods. generating here
-        the dictionary that is returned to Ui classes avoid to duplicate
-        the conversion in the reporters methods.
+        Get an entity protobufer and return a dictionary with
+        desired fields.
+        Missing fields are populated with -1.
         """
-        entity_list = self._get_vm_live_stats(field_name_list=field_list,
-                                              filter_criteria=filter_by,
-                                              sort_criteria=sort_criteria)
-        entity_stats_dic = []
+        entity_dict = {}
 
-        for vm_entity in entity_list:
-            entity_dict = {}
-            entity_dict["id"] = vm_entity.id
-            entity_dict["vm_name"] = str(vm_entity.vm_name)
+        if hasattr(entity, "stats"):
+            stats = entity.stats
 
-            if hasattr(vm_entity, "stats"):
-                stats = vm_entity.stats
+            for tmp_stat in stats.DESCRIPTOR.fields:
+                if (tmp_stat.name != "common_stats" and
+                   tmp_stat.name != "generic_stat_list"):
+                    if tmp_stat.name in field_list:
+                        entity_dict[tmp_stat.name] = getattr(
+                            stats, tmp_stat.name)
 
-                for tmp_stat in stats.DESCRIPTOR.fields:
-                    if (tmp_stat.name != "common_stats" and
-                       tmp_stat.name != "generic_stat_list"):
-                        if tmp_stat.name in field_list:
-                            entity_dict[tmp_stat.name] = getattr(
-                                stats, tmp_stat.name)
+            if hasattr(stats, "common_stats"):
+                for tmp_common_stat in stats.common_stats.DESCRIPTOR.fields:
+                    if tmp_common_stat.name in field_list:
+                        entity_dict[tmp_common_stat.name] = getattr(
+                            stats.common_stats, tmp_common_stat.name)
 
-                if hasattr(stats, "common_stats"):
-                    for tmp_common_stat in stats.common_stats.DESCRIPTOR.fields:
-                        if tmp_common_stat.name in field_list:
-                            entity_dict[tmp_common_stat.name] = getattr(
-                                stats.common_stats, tmp_common_stat.name)
+            if hasattr(stats, "generic_stat_list"):
+                for tmp_generic_stat in stats.generic_stat_list:
+                    entity_dict[tmp_generic_stat.stat_name] = tmp_generic_stat.stat_value
 
-                if hasattr(stats, "generic_stat_list"):
-                    for tmp_generic_stat in stats.generic_stat_list:
-                        entity_dict[tmp_generic_stat.stat_name] = tmp_generic_stat.stat_value
+        if hasattr(entity, "generic_attribute_list"):
+            for tmp_generic_attr in entity.generic_attribute_list:
+                name = None
+                value = None
+                for field, _ in tmp_generic_attr.ListFields():
+                    if field.name == "attribute_name":
+                        name = str(getattr(tmp_generic_attr, field.name))
+                    elif field.name == "attribute_value_str":
+                        value = getattr(tmp_generic_attr, str(field.name))
+                    elif field.name == "attribute_value_int":
+                        value = getattr(tmp_generic_attr, field.name)
+                    elif hasattr(generic_attr, "attribute_value_str_list"):
+                        value = getattr(tmp_generic_attr, field.name)
+                if name is not None and value is not None:
+                    entity_dict[name] = value
 
-            if hasattr(vm_entity, "generic_attribute_list"):
-                for tmp_generic_attr in vm_entity.generic_attribute_list:
-                    name = None
-                    value = None
-                    for field, _ in tmp_generic_attr.ListFields():
-                        if field.name == "attribute_name":
-                            name = str(getattr(tmp_generic_attr, field.name))
-                        elif field.name == "attribute_value_str":
-                            value = getattr(tmp_generic_attr, str(field.name))
-                        elif field.name == "attribute_value_int":
-                            value = getattr(tmp_generic_attr, field.name)
-                        elif hasattr(generic_attr, "attribute_value_str_list"):
-                            value = getattr(tmp_generic_attr, field.name)
-                    if name is not None and value is not None:
-                        entity_dict[name] = value
+        # Method returns a dictionary with all fields in field_list,
+        # if there is a missing field, populate with -1.
+        for field in field_list:
+            if not field in entity_dict.keys():
+                entity_dict[field] = -1
 
-            # Method returns a dictionary with all fields in field_list,
-            # if there is a field missing, populate with populated with -1.
-            for field in field_list:
-                if not field in entity_dict.keys():
-                    entity_dict[field] = -1
-
-            entity_dict = self._stats_unit_conversion(entity_dict)
-            entity_stats_dic.append(entity_dict)
-        return entity_stats_dic
+        return entity_dict
 
     def _get_generic_stats_dict(self, generic_stat_list):
         """
@@ -1056,75 +1046,25 @@ class VmReporter(Reporter):
         }
 
     def _get_vm_live_stats(self, sort_criteria=None, filter_criteria=None,
-                           search_term=None, field_name_list=None):
+                           search_term=None, field_list=None):
         response = self._get_live_stats(self._ARITHMOS_ENTITY_PROTO,
                                         sort_criteria, filter_criteria,
-                                        search_term, field_name_list)
+                                        search_term, field_list)
         entity_list = response.entity_list.vm
         return entity_list
 
-    def _get_live_stats_dic(self, field_list, filter_by="", sort_criteria=""):
+    def _get_live_stats_dic(self, entity_list, field_list):
         """
         Get an entity_list as returned from MasterGetEntitiesStats,
         parse the entities and stats to a dictinary that will be returned.
 
-        This is a helper for reporters methods. generating here
-        the dictionary that is returned to Ui classes avoid to duplicate
-        the conversion in the reporters methods.
+        This is a helper for reporters methods. 
         """
-        entity_list = self._get_vm_live_stats(field_name_list=field_list,
-                                              filter_criteria=filter_by,
-                                              sort_criteria=sort_criteria)
         vm_stats_dic = []
-
         for vm_entity in entity_list:
-            vm_dict = {}
+            vm_dict = self._get_entity_stats_from_proto(vm_entity, field_list)
             vm_dict["id"] = vm_entity.id
             vm_dict["vm_name"] = str(vm_entity.vm_name)
-
-            if hasattr(vm_entity, "stats"):
-                stats = vm_entity.stats
-
-                for tmp_stat in stats.DESCRIPTOR.fields:
-                    if (tmp_stat.name != "common_stats" and
-                       tmp_stat.name != "generic_stat_list"):
-                        if tmp_stat.name in field_list:
-                            vm_dict[tmp_stat.name] = getattr(
-                                stats, tmp_stat.name)
-
-                if hasattr(stats, "common_stats"):
-                    for tmp_common_stat in stats.common_stats.DESCRIPTOR.fields:
-                        if tmp_common_stat.name in field_list:
-                            vm_dict[tmp_common_stat.name] = getattr(
-                                stats.common_stats, tmp_common_stat.name)
-
-                if hasattr(stats, "generic_stat_list"):
-                    for tmp_generic_stat in stats.generic_stat_list:
-                        vm_dict[tmp_generic_stat.stat_name] = tmp_generic_stat.stat_value
-
-            if hasattr(vm_entity, "generic_attribute_list"):
-                for tmp_generic_attr in vm_entity.generic_attribute_list:
-                    name = None
-                    value = None
-                    for field, _ in tmp_generic_attr.ListFields():
-                        if field.name == "attribute_name":
-                            name = str(getattr(tmp_generic_attr, field.name))
-                        elif field.name == "attribute_value_str":
-                            value = getattr(tmp_generic_attr, str(field.name))
-                        elif field.name == "attribute_value_int":
-                            value = getattr(tmp_generic_attr, field.name)
-                        elif hasattr(generic_attr, "attribute_value_str_list"):
-                            value = getattr(tmp_generic_attr, field.name)
-                    if name is not None and value is not None:
-                        vm_dict[name] = value
-
-            # Method returns a dictionary with all fields in field_list,
-            # if there is a field missing, populate with populated with -1.
-            for field in field_list:
-                if not field in vm_dict.keys():
-                    vm_dict[field] = -1
-
-            vm_dict = self._stats_unit_conversion(vm_dict)
             vm_stats_dic.append(vm_dict)
         return vm_stats_dic
 
@@ -1142,14 +1082,19 @@ class VmReporter(Reporter):
                                        for node_name in node_names])
             filter_by += ";" + node_names_str
 
-        vm_entities = self._get_live_stats_dic(
-            VM_OVERALL_REPORT_ARITHMOS_FIELDS,
-            filter_by, sort_criteria=sort_by_arithmos)
+        entity_list = self._get_vm_live_stats(
+            field_list=VM_OVERALL_REPORT_ARITHMOS_FIELDS,
+            filter_criteria=filter_by,
+            sort_criteria=sort_by_arithmos)
+
+        vm_entities_dict = self._get_live_stats_dic(entity_list,
+                                                    VM_OVERALL_REPORT_ARITHMOS_FIELDS)
+        vm_entities_dict = self._stats_unit_conversion(vm_entities_dict)
 
         if sort_by == "vm_name":
-            return sorted(vm_entities, key=lambda node: node[sort_by])
+            return sorted(vm_entities_dict, key=lambda node: node[sort_by])
         else:
-            return sorted(vm_entities, key=lambda node: node[sort_by], reverse=True)
+            return sorted(vm_entities_dict, key=lambda node: node[sort_by], reverse=True)
 
     def overall_time_range_report(self, start, end, sort="name", node_names=[]):
         if sort in self.sort_conversion.keys():
@@ -1175,8 +1120,8 @@ class VmReporter(Reporter):
             filter_by = ",".join(["node_name==" + node_name
                                   for node_name in node_names])
 
-        vm_list = self._get_vm_live_stats(field_name_list=["vm_name", "id",
-                                                           "node_name"],
+        vm_list = self._get_vm_live_stats(field_list=["vm_name", "id",
+                                                      "node_name"],
                                           filter_criteria=filter_by,
                                           sort_criteria=sort_by_arithmos)
         generic_attribute_names = ["node_name"]
