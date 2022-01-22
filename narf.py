@@ -564,256 +564,22 @@ class NodeReporter(Reporter):
             node_stats_dic.append(node_dict)
         return node_stats_dic
 
-    def _get_time_range_stats_dic(self, field_list, start, end):
+    def _get_time_range_stats_dic(self, field_list, start, end, sampling_interval=30):
         """
-        Get an entity_list as returned from MasterGetEntitiesStats,
-        parse the entities and stats to a dictinary that will be returned.
-
-        This is a helper for reporters methods. generating here
-        the dictionary that is returned to Ui classes avoid to duplicate
-        the conversion in the reporters methods.
-
-        TODO: Need to fix this. A better solution may be to iterate over
-              field_list and process based on a name pattern. For example:
-
-               - if name has "ppm" divide by 10000
-               - if name has "iops" just pass the name
-               - if name has "kBps" divide by 1024
-               - if name has "usec" divide by 1000
-               - if the name doesn't match any pattern just pass add it
-                 to the dictionary as it is.
-
-             and change keys accordingly.
-
-             The following serie of if statements will be reduced to an acceptable
-             number of 5.
-
-             I will do this on VmNodes and come back here to fix it.
+        Get a list of fields (stats), a time frame specified by start and end,
+        the desired interval and collects from arithmos the average values.
         """
-        sampling_interval = 30
         nodes_stats_dic = []
         for node_pivot in self.nodes:
             node = {}
-            node["node_name"] = node_pivot.node_name
+            for field in field_list:
+                value = self._get_time_range_stat_average(
+                    node_pivot.id, field, start, end,
+                    sampling_interval
+                )
+                node[field] = value
+            node["node_name"] = str(node_pivot.node_name)
             node["node_id"] = int(node_pivot.id)
-            if "hypervisor_cpu_usage_ppm" in field_list:
-                node["hypervisor_cpu_usage_percent"] = (
-                    self._get_time_range_stat_average(
-                        node_pivot.id, "hypervisor_cpu_usage_ppm", start, end,
-                        sampling_interval) / 10000
-                )
-            if "hypervisor_memory_usage_ppm" in field_list:
-                node["hypervisor_memory_usage_percent"] = (
-                    self._get_time_range_stat_average(
-                        node_pivot.id, "hypervisor_memory_usage_ppm", start, end,
-                        sampling_interval) / 10000
-                )
-
-            if "hypervisor_num_iops" in field_list:
-                node["hypervisor_num_iops"] = (
-                    self._get_time_range_stat_average(
-                        node_pivot.id, "hypervisor_num_iops", start, end,
-                        sampling_interval)
-                )
-            if "hypervisor_num_read_iops" in field_list:
-                node["hypervisor_num_read_iops"] = (
-                    self._get_time_range_stat_average(
-                        node_pivot.id, "hypervisor_num_read_iops", start, end,
-                        sampling_interval)
-                )
-            if "hypervisor_num_write_iops" in field_list:
-                node["hypervisor_num_write_iops"] = (
-                    self._get_time_range_stat_average(
-                        node_pivot.id, "hypervisor_num_iops", start, end,
-                        sampling_interval)
-                )
-
-            if "controller_num_iops" in field_list:
-                node["controller_num_iops"] = (
-                    self._get_time_range_stat_average(
-                        node_pivot.id, "controller_num_iops", start, end,
-                        sampling_interval)
-                )
-            if "controller_num_read_iops" in field_list:
-                node["controller_num_read_iops"] = (
-                    self._get_time_range_stat_average(
-                        node_pivot.id, "controller_num_read_iops", start, end,
-                        sampling_interval)
-                )
-            if "controller_num_write_iops" in field_list:
-                node["controller_num_write_iops"] = (
-                    self._get_time_range_stat_average(
-                        node_pivot.id, "controller_num_write_iops", start, end,
-                        sampling_interval)
-                )
-
-            if "num_iops" in field_list:
-                node["num_iops"] = (
-                    int(self._get_time_range_stat_average(
-                        node_pivot.id, "num_iops", start, end, sampling_interval))
-                )
-            if "num_read_iops" in field_list:
-                node["num_read_iops"] = (
-                    int(self._get_time_range_stat_average(
-                        node_pivot.id, "num_read_iops", start, end, sampling_interval))
-                )
-            if "num_write_iops" in field_list:
-                node["num_write_iops"] = (
-                    int(self._get_time_range_stat_average(
-                        node_pivot.id, "num_write_iops", start, end, sampling_interval))
-                )
-
-            if "hypervisor_io_bandwidth_kBps" in field_list:
-                node["hypervisor_io_bandwidth_mBps"] = (
-                    self._get_time_range_stat_average(
-                        node_pivot.id, "hypervisor_io_bandwidth_kBps", start, end,
-                        sampling_interval) / 1024
-                )
-            if "hypervisor_read_io_bandwidth_kBps" in field_list:
-                node["hypervisor_read_io_bandwidth_mBps"] = (
-                    self._get_time_range_stat_average(
-                        node_pivot.id, "hypervisor_read_io_bandwidth_kBps", start, end,
-                        sampling_interval) / 1024
-                )
-            if "controller_write_io_bandwidth_kBps" in field_list:
-                node["controller_write_io_bandwidth_mBps"] = (
-                    self._get_time_range_stat_average(
-                        node_pivot.id, "controller_write_io_bandwidth_kBps", start, end,
-                        sampling_interval) / 1024
-                )
-
-            if "controller_io_bandwidth_kBps" in field_list:
-                node["controller_io_bandwidth_mBps"] = (
-                    self._get_time_range_stat_average(
-                        node_pivot.id, "controller_io_bandwidth_kBps", start, end,
-                        sampling_interval) / 1024
-                )
-            if "controller_read_io_bandwidth_kBps" in field_list:
-                node["controller_read_io_bandwidth_mBps"] = (
-                    self._get_time_range_stat_average(
-                        node_pivot.id, "controller_read_io_bandwidth_kBps", start, end,
-                        sampling_interval) / 1024
-                )
-            if "controller_write_io_bandwidth_kBps" in field_list:
-                node["controller_write_io_bandwidth_mBps"] = (
-                    self._get_time_range_stat_average(
-                        node_pivot.id, "controller_write_io_bandwidth_kBps", start, end,
-                        sampling_interval) / 1024
-                )
-
-            if "io_bandwidth_kBps" in field_list:
-                node["io_bandwidth_mBps"] = (
-                    self._get_time_range_stat_average(
-                        node_pivot.id, "io_bandwidth_kBps", start, end,
-                        sampling_interval) / 1024
-                )
-            if "read_io_bandwidth_kBps" in field_list:
-                node["read_io_bandwidth_mBps"] = (
-                    self._get_time_range_stat_average(
-                        node_pivot.id, "read_io_bandwidth_kBps", start, end,
-                        sampling_interval) / 1024
-                )
-            if "write_io_bandwidth_kBps" in field_list:
-                node["write_io_bandwidth_mBps"] = (
-                    self._get_time_range_stat_average(
-                        node_pivot.id, "write_io_bandwidth_kBps", start, end,
-                        sampling_interval) / 1024
-                )
-
-            if "hypervisor_io_bandwidth_kBps" in field_list:
-                node["hypervisor_io_bandwidth_mBps"] = (
-                    self._get_time_range_stat_average(
-                        node_pivot.id, "hypervisor_io_bandwidth_kBps", start, end,
-                        sampling_interval) / 1024
-                )
-            if "hypervisor_read_io_bandwidth_kBps" in field_list:
-                node["hypervisor_read_io_bandwidth_mBps"] = (
-                    self._get_time_range_stat_average(
-                        node_pivot.id, "hypervisor_read_io_bandwidth_kBps", start, end,
-                        sampling_interval) / 1024
-                )
-            if "hypervisor_write_io_bandwidth_kBps" in field_list:
-                node["hypervisor_write_io_bandwidth_mBps"] = (
-                    self._get_time_range_stat_average(
-                        node_pivot.id, "hypervisor_write_io_bandwidth_kBps", start, end,
-                        sampling_interval) / 1024
-                )
-
-            if "controller_io_bandwidth_kBps" in field_list:
-                node["controller_io_bandwidth_mBps"] = (
-                    self._get_time_range_stat_average(
-                        node_pivot.id, "controller_io_bandwidth_kBps", start, end,
-                        sampling_interval) / 1024
-                )
-            if "controller_read_io_bandwidth_kBps" in field_list:
-                node["controller_read_io_bandwidth_mBps"] = (
-                    self._get_time_range_stat_average(
-                        node_pivot.id, "controller_read_io_bandwidth_kBps", start, end,
-                        sampling_interval) / 1024
-                )
-            if "controller_write_io_bandwidth_kBps" in field_list:
-                node["controller_write_io_bandwidth_mBps"] = (
-                    self._get_time_range_stat_average(
-                        node_pivot.id, "controller_write_io_bandwidth_kBps", start, end,
-                        sampling_interval) / 1024
-                )
-
-            if "hypervisor_avg_io_latency_usecs" in field_list:
-                node["hypervisor_avg_io_latency_msecs"] = (
-                    self._get_time_range_stat_average(
-                        node_pivot.id, "hypervisor_avg_io_latency_usecs", start, end,
-                        sampling_interval) / 1000
-                )
-            if "hypervisor_avg_read_io_latency_usecs" in field_list:
-                node["hypervisor_avg_read_io_latency_msecs"] = (
-                    self._get_time_range_stat_average(
-                        node_pivot.id, "hypervisor_avg_read_io_latency_usecs", start, end,
-                        sampling_interval) / 1000
-                )
-            if "hypervisor_avg_write_io_latency_usecs" in field_list:
-                node["hypervisor_avg_write_io_latency_msecs"] = (
-                    self._get_time_range_stat_average(
-                        node_pivot.id, "hypervisor_avg_write_io_latency_usecs", start, end,
-                        sampling_interval) / 1000
-                )
-
-            if "controller_avg_io_latency_usecs" in field_list:
-                node["controller_avg_io_latency_msecs"] = (
-                    self._get_time_range_stat_average(
-                        node_pivot.id, "controller_avg_io_latency_usecs", start, end,
-                        sampling_interval) / 1000
-                )
-            if "controller_avg_read_io_latency_usecs" in field_list:
-                node["controller_avg_read_io_latency_msecs"] = (
-                    self._get_time_range_stat_average(
-                        node_pivot.id, "controller_avg_read_io_latency_usecs", start, end,
-                        sampling_interval) / 1000
-                )
-            if "controller_avg_write_io_latency_usecs" in field_list:
-                node["controller_avg_write_io_latency_msecs"] = (
-                    self._get_time_range_stat_average(
-                        node_pivot.id, "controller_avg_write_io_latency_usecs", start, end,
-                        sampling_interval) / 1000
-                )
-
-            if "avg_io_latency_usecs" in field_list:
-                node["avg_io_latency_msecs"] = (
-                    self._get_time_range_stat_average(
-                        node_pivot.id, "avg_io_latency_usecs", start, end,
-                        sampling_interval) / 1000
-                )
-            if "avg_read_io_latency_usecs" in field_list:
-                node["avg_read_io_latency_msecs"] = (
-                    self._get_time_range_stat_average(
-                        node_pivot.id, "avg_read_io_latency_usecs", start, end,
-                        sampling_interval) / 1000
-                )
-            if "avg_write_io_latency_usecs" in field_list:
-                node["avg_write_io_latency_msecs"] = (
-                    self._get_time_range_stat_average(
-                        node_pivot.id, "avg_write_io_latency_usecs", start, end,
-                        sampling_interval) / 1000
-                )
             nodes_stats_dic.append(node)
         return nodes_stats_dic
 
@@ -848,6 +614,7 @@ class NodeReporter(Reporter):
         """
         ret = self._get_time_range_stats_dic(
             NODES_OVERALL_REPORT_ARITHMOS_FIELDS, start, end)
+        ret = self._stats_unit_conversion(ret)
         return self._sort_entity_dict(ret, sort)
 
     def iops_live_report(self, sort="name"):
@@ -868,6 +635,7 @@ class NodeReporter(Reporter):
         """
         ret = self._get_time_range_stats_dic(
             NODES_IOPS_REPORT_ARITHMOS_FIELDS, start, end)
+        ret = self._stats_unit_conversion(ret)
         return self._sort_entity_dict(ret, sort)
 
     def bw_live_report(self, sort="name"):
@@ -888,6 +656,7 @@ class NodeReporter(Reporter):
         """
         ret = self._get_time_range_stats_dic(
             NODES_BANDWIDTH_REPORT_ARITHMOS_FIELDS, start, end)
+        ret = self._stats_unit_conversion(ret)
         return self._sort_entity_dict(ret, sort)
 
     def lat_live_report(self, sort="name"):
@@ -908,6 +677,7 @@ class NodeReporter(Reporter):
         """
         ret = self._get_time_range_stats_dic(
             NODES_LATENCY_REPORT_ARITHMOS_FIELDS, start, end)
+        ret = self._stats_unit_conversion(ret)
         return self._sort_entity_dict(ret, sort)
 
 
