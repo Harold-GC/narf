@@ -550,141 +550,19 @@ class NodeReporter(Reporter):
         entity_list = response.entity_list.node
         return entity_list
 
-    def _get_live_stats_dic(self, field_list, filter_by=""):
+    def _get_live_stats_dic(self, entity_list, field_list):
         """
         Get an entity_list as returned from MasterGetEntitiesStats,
-        parse the entities and stats to a dictinary that will be returned.
-
-        This is a helper for reporters methods. generating here
-        the dictionary that is returned to Ui classes avoid to duplicate
-        the conversion in the reporters methods.
-
-        As more stats for different reports are needed this list will grow.
-
-        TODO: Need to fix this. A better solution may be to iterate over
-              field_list and process based on a name pattern. For example:
-
-               - if name has "ppm" divide by 10000
-               - if name has "iops" just pass the name
-               - if name has "kBps" divide by 1024
-               - if name has "usec" divide by 1000
-               - if the name doesn't match any pattern just pass add it
-                 to the dictionary as it is.
-
-             and change keys accordingly.
-
-             The following serie of if statements will be reduced to an acceptable
-             number of 5.
-
-             I will do this on VmNodes and come back here to fix it.
+        parse the entities and stats to a dictinary an returns.
         """
-        stats = self._get_node_live_stats(field_name_list=field_list,
-                                          filter_criteria=filter_by)
-        nodes_stats_dic = []
-        for node_stat in stats:
-            node = {}
-            if hasattr(node_stat, "node_name"):
-                node["node_name"] = node_stat.node_name
-            if hasattr(node_stat, "id"):
-                node["node_id"] = int(node_stat.id)
-            if hasattr(node_stat.stats, "hypervisor_cpu_usage_ppm"):
-                node["hypervisor_cpu_usage_percent"] = (
-                    node_stat.stats.hypervisor_cpu_usage_ppm / 10000)
-            if hasattr(node_stat.stats, "hypervisor_memory_usage_ppm"):
-                node["hypervisor_memory_usage_percent"] = (
-                    node_stat.stats.hypervisor_memory_usage_ppm / 10000)
-
-            if hasattr(node_stat.stats.common_stats, "hypervisor_num_iops"):
-                node["hypervisor_num_iops"] = (
-                    node_stat.stats.common_stats.hypervisor_num_iops)
-            if hasattr(node_stat.stats.common_stats, "hypervisor_num_read_iops"):
-                node["hypervisor_num_read_iops"] = (
-                    node_stat.stats.common_stats.hypervisor_num_read_iops)
-            if hasattr(node_stat.stats.common_stats, "hypervisor_num_write_iops"):
-                node["hypervisor_num_write_iops"] = (
-                    node_stat.stats.common_stats.hypervisor_num_write_iops)
-
-            if hasattr(node_stat.stats.common_stats, "controller_num_iops"):
-                node["controller_num_iops"] = (
-                    node_stat.stats.common_stats.controller_num_iops)
-            if hasattr(node_stat.stats.common_stats, "controller_num_read_iops"):
-                node["controller_num_read_iops"] = (
-                    node_stat.stats.common_stats.controller_num_read_iops)
-            if hasattr(node_stat.stats.common_stats, "controller_num_write_iops"):
-                node["controller_num_write_iops"] = (
-                    node_stat.stats.common_stats.controller_num_write_iops)
-
-            if hasattr(node_stat.stats.common_stats, "num_iops"):
-                node["num_iops"] = (
-                    node_stat.stats.common_stats.num_iops)
-            if hasattr(node_stat.stats.common_stats, "num_read_iops"):
-                node["num_read_iops"] = (
-                    node_stat.stats.common_stats.num_read_iops)
-            if hasattr(node_stat.stats.common_stats, "num_write_iops"):
-                node["num_write_iops"] = (
-                    node_stat.stats.common_stats.num_write_iops)
-
-            if hasattr(node_stat.stats.common_stats, "hypervisor_io_bandwidth_kBps"):
-                node["hypervisor_io_bandwidth_mBps"] = float(
-                    node_stat.stats.common_stats.hypervisor_io_bandwidth_kBps / 1024)
-            if hasattr(node_stat.stats.common_stats, "hypervisor_read_io_bandwidth_kBps"):
-                node["hypervisor_read_io_bandwidth_mBps"] = float(
-                    node_stat.stats.common_stats.hypervisor_read_io_bandwidth_kBps / 1024)
-            if hasattr(node_stat.stats.common_stats, "hypervisor_write_io_bandwidth_kBps"):
-                node["hypervisor_write_io_bandwidth_mBps"] = float(
-                    node_stat.stats.common_stats.hypervisor_write_io_bandwidth_kBps / 1024)
-
-            if hasattr(node_stat.stats.common_stats, "controller_io_bandwidth_kBps"):
-                node["controller_io_bandwidth_mBps"] = float(
-                    node_stat.stats.common_stats.controller_io_bandwidth_kBps / 1024)
-            if hasattr(node_stat.stats.common_stats, "controller_read_io_bandwidth_kBps"):
-                node["controller_read_io_bandwidth_mBps"] = float(
-                    node_stat.stats.common_stats.controller_read_io_bandwidth_kBps / 1024)
-            if hasattr(node_stat.stats.common_stats, "controller_write_io_bandwidth_kBps"):
-                node["controller_write_io_bandwidth_mBps"] = float(
-                    node_stat.stats.common_stats.controller_write_io_bandwidth_kBps / 1024)
-
-            if hasattr(node_stat.stats.common_stats, "io_bandwidth_kBps"):
-                node["io_bandwidth_mBps"] = float(
-                    node_stat.stats.common_stats.io_bandwidth_kBps / 1024)
-            if hasattr(node_stat.stats.common_stats, "read_io_bandwidth_kBps"):
-                node["read_io_bandwidth_mBps"] = float(
-                    node_stat.stats.common_stats.read_io_bandwidth_kBps / 1024)
-            if hasattr(node_stat.stats.common_stats, "write_io_bandwidth_kBps"):
-                node["write_io_bandwidth_mBps"] = float(
-                    node_stat.stats.common_stats.write_io_bandwidth_kBps / 1024)
-
-            if hasattr(node_stat.stats.common_stats, "hypervisor_avg_io_latency_usecs"):
-                node["hypervisor_avg_io_latency_msecs"] = (
-                    node_stat.stats.common_stats.hypervisor_avg_io_latency_usecs / 1000)
-            if hasattr(node_stat.stats.common_stats, "hypervisor_avg_read_io_latency_usecs"):
-                node["hypervisor_avg_read_io_latency_msecs"] = (
-                    node_stat.stats.common_stats.hypervisor_avg_read_io_latency_usecs / 1000)
-            if hasattr(node_stat.stats.common_stats, "hypervisor_avg_write_io_latency_usecs"):
-                node["hypervisor_avg_write_io_latency_msecs"] = (
-                    node_stat.stats.common_stats.hypervisor_avg_write_io_latency_usecs / 1000)
-
-            if hasattr(node_stat.stats.common_stats, "controller_avg_io_latency_usecs"):
-                node["controller_avg_io_latency_msecs"] = (
-                    node_stat.stats.common_stats.controller_avg_io_latency_usecs / 1000)
-            if hasattr(node_stat.stats.common_stats, "controller_avg_read_io_latency_usecs"):
-                node["controller_avg_read_io_latency_msecs"] = (
-                    node_stat.stats.common_stats.controller_avg_read_io_latency_usecs / 1000)
-            if hasattr(node_stat.stats.common_stats, "controller_avg_write_io_latency_usecs"):
-                node["controller_avg_write_io_latency_msecs"] = (
-                    node_stat.stats.common_stats.controller_avg_write_io_latency_usecs / 1000)
-
-            if hasattr(node_stat.stats.common_stats, "avg_io_latency_usecs"):
-                node["avg_io_latency_msecs"] = (
-                    node_stat.stats.common_stats.avg_io_latency_usecs / 1000)
-            if hasattr(node_stat.stats.common_stats, "avg_read_io_latency_usecs"):
-                node["avg_read_io_latency_msecs"] = (
-                    node_stat.stats.common_stats.avg_read_io_latency_usecs / 1000)
-            if hasattr(node_stat.stats.common_stats, "avg_write_io_latency_usecs"):
-                node["avg_write_io_latency_msecs"] = (
-                    node_stat.stats.common_stats.avg_write_io_latency_usecs / 1000)
-            nodes_stats_dic.append(node)
-        return nodes_stats_dic
+        node_stats_dic = []
+        for node_entity in entity_list:
+            node_dict = self._get_entity_stats_from_proto(
+                node_entity, field_list)
+            node_dict["id"] = node_entity.id
+            node_dict["node_name"] = str(node_entity.node_name)
+            node_stats_dic.append(node_dict)
+        return node_stats_dic
 
     def _get_time_range_stats_dic(self, field_list, start, end):
         """
@@ -956,7 +834,12 @@ class NodeReporter(Reporter):
         """
         Returns a sorted dictionary with nodes overall stats.
         """
-        ret = self._get_live_stats_dic(NODES_OVERALL_REPORT_ARITHMOS_FIELDS)
+        entity_list = self._get_node_live_stats(
+            field_name_list=NODES_OVERALL_REPORT_ARITHMOS_FIELDS,
+            filter_criteria="")
+        ret = self._get_live_stats_dic(entity_list,
+                                       NODES_OVERALL_REPORT_ARITHMOS_FIELDS)
+        ret = self._stats_unit_conversion(ret)
         return self._sort_entity_dict(ret, sort)
 
     def overall_time_range_report(self, start, end, sort="name", nodes=[]):
@@ -971,7 +854,12 @@ class NodeReporter(Reporter):
         """
         Returns a sorted dictionary with live nodes IOPS stats.
         """
-        ret = self._get_live_stats_dic(NODES_IOPS_REPORT_ARITHMOS_FIELDS)
+        entity_list = self._get_node_live_stats(
+            field_name_list=NODES_IOPS_REPORT_ARITHMOS_FIELDS,
+            filter_criteria="")
+        ret = self._get_live_stats_dic(entity_list,
+                                       NODES_IOPS_REPORT_ARITHMOS_FIELDS)
+        ret = self._stats_unit_conversion(ret)
         return self._sort_entity_dict(ret, sort)
 
     def iops_time_range_report(self, start, end, sort="name", nodes=[]):
@@ -986,7 +874,12 @@ class NodeReporter(Reporter):
         """
         Returns a sorted dictionary with live nodes bandwidth stats.
         """
-        ret = self._get_live_stats_dic(NODES_BANDWIDTH_REPORT_ARITHMOS_FIELDS)
+        entity_list = self._get_node_live_stats(
+            field_name_list=NODES_BANDWIDTH_REPORT_ARITHMOS_FIELDS,
+            filter_criteria="")
+        ret = self._get_live_stats_dic(entity_list,
+                                       NODES_BANDWIDTH_REPORT_ARITHMOS_FIELDS)
+        ret = self._stats_unit_conversion(ret)
         return self._sort_entity_dict(ret, sort)
 
     def bw_time_range_report(self, start, end, sort="name", nodes=[]):
@@ -1001,7 +894,12 @@ class NodeReporter(Reporter):
         """
         Returns a sorted dictionary with live nodes bandwidth stats.
         """
-        ret = self._get_live_stats_dic(NODES_LATENCY_REPORT_ARITHMOS_FIELDS)
+        entity_list = self._get_node_live_stats(
+            field_name_list=NODES_LATENCY_REPORT_ARITHMOS_FIELDS,
+            filter_criteria="")
+        ret = self._get_live_stats_dic(entity_list,
+                                       NODES_LATENCY_REPORT_ARITHMOS_FIELDS)
+        ret = self._stats_unit_conversion(ret)
         return self._sort_entity_dict(ret, sort)
 
     def lat_time_range_report(self, start, end, sort="name", nodes=[]):
@@ -1056,9 +954,7 @@ class VmReporter(Reporter):
     def _get_live_stats_dic(self, entity_list, field_list):
         """
         Get an entity_list as returned from MasterGetEntitiesStats,
-        parse the entities and stats to a dictinary that will be returned.
-
-        This is a helper for reporters methods. 
+        parse the entities and stats to a dictinary and returns.
         """
         vm_stats_dic = []
         for vm_entity in entity_list:
