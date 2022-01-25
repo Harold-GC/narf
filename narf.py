@@ -271,6 +271,30 @@ VM_OVERALL_REPORT_ARITHMOS_FIELDS = (
     ]
 )
 
+VM_OVERALL_REPORT_CLI_FIELDS = (
+    [
+        {"key": "vm_name", "header": "Node",
+            "width": 20, "align": "<", "format": ".20"},
+        {"key": "hypervisor_cpu_usage_percent", "header": "CPU%",
+            "width": 6, "align": ">", "format": ".2f"},
+        {"key": "hypervisor.cpu_ready_time_percent", "header": "RDY%",
+            "width": 6, "align": ">", "format": ".2f"},
+        {"key": "memory_usage_percent", "header": "MEM%",
+            "width": 6, "align": ">", "format": ".2f"},
+        {"key": "controller_num_iops", "header": "cIOPS",
+            "width": 8, "align": ">", "format": ".2f"},
+        {"key": "hypervisor_num_iops", "header": "hIOPS",
+            "width": 8, "align": ">", "format": ".2f"},
+        {"key": "num_iops", "header": "IOPS",
+            "width": 8, "align": ">", "format": ".2f"},
+        {"key": "controller_io_bandwidth_mBps",
+            "header": "B/W[MB]", "width": 8, "align": ">", "format": ".2f"},
+        {"key": "controller_avg_io_latency_msecs",
+            "header": "LAT[ms]", "width": 8, "align": ">", "format": ".2f"}
+
+    ]
+)
+
 # ========================================================================
 
 
@@ -940,7 +964,7 @@ class UiCli(Ui):
     def nodes_overall_live_report(self, sec, count, sort="name",
                                   node_names=[], report_type="overall"):
         """
-        Print nodes overall live report.
+        Print nodes live reports.
         """
         if not sec or sec < 0:
             sec = 0
@@ -1032,48 +1056,23 @@ class UiCli(Ui):
             return True
         return False
 
-    def uvms_overall_live_report(self, sec, count, sort="name", node_names=[]):
+    def uvms_live_report(self, sec, count, sort="name",
+                         node_names=[], report_type="overall"):
         if not sec or sec < 0:
             sec = 0
             count = 1
         else:
             if not count or count < 0:
                 count = 1000
-        i = 0
-        while i < count:
-            i += 1
-            today = datetime.date.today()
-            time_now = datetime.datetime.now().strftime("%H:%M:%S")
-            vms = self.vm_reporter.overall_live_report(sort, node_names)
-            print("{time:<11} {vm:<30} {cpu:>6} {rdy:>6} {mem:>6} "
-                  "{ciops:>6} {hiops:>6} {iops:>6} {bw:>8} {lat:>8}".format(
-                      time=str(today),
-                      vm="VM Name",
-                      cpu="CPU%",
-                      rdy="RDY%",
-                      mem="MEM%",
-                      ciops="cIOPs",
-                      hiops="hIOPs",
-                      iops="IOPs",
-                      bw="B/W[MB]",
-                      lat="LAT[ms]",
-                      width=self.vm_reporter.max_vm_name_width
-                  ))
-            for vm in vms:
-                print("{0:<11} {vm_name:<30} "
-                      "{v[hypervisor_cpu_usage_percent]:>6.2f} "
-                      "{v[hypervisor.cpu_ready_time_percent]:>6.2f} "
-                      "{v[memory_usage_percent]:>6.2f} "
-                      "{v[controller_num_iops]:>6} "
-                      "{v[hypervisor_num_iops]:>6} "
-                      "{v[num_iops]:>6} "
-                      "{v[controller_io_bandwidth_mBps]:>8.2f} "
-                      "{v[controller_avg_io_latency_msecs]:>8.2f} "
-                      .format(str(time_now),
-                              vm_name=vm["vm_name"][:30],
-                              v=vm))
-            print("")
+
+        for i in range(count):
             time.sleep(sec)
+            time_now = datetime.datetime.now().strftime("%Y/%m/%d-%H:%M:%S")
+            if report_type == "overall":
+                entity_list = self.vm_reporter.overall_live_report(
+                    sort, node_names)
+                self._report_format_printer(
+                    VM_OVERALL_REPORT_CLI_FIELDS, entity_list, time_now)
 
     def uvms_overall_time_range_report(self, start_time, end_time, sec=None,
                                        sort="name", node_names=[]):
@@ -1670,10 +1669,10 @@ if __name__ == "__main__":
             try:
                 ui_cli = UiCli()
                 if not args.start_time and not args.end_time:
-                    ui_cli.uvms_overall_live_report(args.sec,
-                                                    args.count,
-                                                    args.sort,
-                                                    args.node_name)
+                    ui_cli.uvms_live_report(args.sec,
+                                            args.count,
+                                            args.sort,
+                                            args.node_name)
                 elif args.start_time and args.end_time:
                     ui_cli.uvms_overall_time_range_report(args.start_time,
                                                           args.end_time,
