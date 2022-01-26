@@ -264,8 +264,8 @@ VM_OVERALL_REPORT_ARITHMOS_FIELDS = (
         "vm_name", "id", "node_name",
         "hypervisor_cpu_usage_ppm",
         "hypervisor.cpu_ready_time_ppm",
-        "memory_usage_ppm", "controller_num_iops",
-        "hypervisor_num_iops", "num_iops",
+        "memory_usage_ppm", "hypervisor_num_iops",
+        "controller_num_iops", "num_iops",
         "controller_io_bandwidth_kBps",
         "controller_avg_io_latency_usecs"
     ]
@@ -281,9 +281,9 @@ VM_OVERALL_REPORT_CLI_FIELDS = (
             "width": 6, "align": ">", "format": ".2f"},
         {"key": "memory_usage_percent", "header": "MEM%",
             "width": 6, "align": ">", "format": ".2f"},
-        {"key": "controller_num_iops", "header": "cIOPS",
-            "width": 8, "align": ">", "format": ".2f"},
         {"key": "hypervisor_num_iops", "header": "hIOPS",
+            "width": 8, "align": ">", "format": ".2f"},
+        {"key": "controller_num_iops", "header": "cIOPS",
             "width": 8, "align": ">", "format": ".2f"},
         {"key": "num_iops", "header": "IOPS",
             "width": 8, "align": ">", "format": ".2f"},
@@ -292,6 +292,56 @@ VM_OVERALL_REPORT_CLI_FIELDS = (
         {"key": "controller_avg_io_latency_msecs",
             "header": "LAT[ms]", "width": 8, "align": ">", "format": ".2f"}
 
+    ]
+)
+
+VM_IOPS_REPORT_ARITHMOS_FIELDS = (
+    [
+        "vm_name", "id", "node_name",
+        "hypervisor_cpu_usage_ppm", "memory_usage_ppm",
+
+        "hypervisor_num_iops",
+        "hypervisor_num_read_iops", "hypervisor_num_write_iops",
+
+        "controller_num_iops",
+        "controller_num_read_iops", "controller_num_write_iops",
+
+        "num_iops",
+        "num_read_iops", "num_write_iops"
+
+    ]
+)
+
+VM_IOPS_REPORT_CLI_FIELDS = (
+    [
+        {"key": "vm_name", "header": "Node",
+            "width": 20, "align": "<", "format": ".20"},
+        {"key": "hypervisor_cpu_usage_percent", "header": "CPU%",
+            "width": 6, "align": ">", "format": ".2f"},
+        {"key": "memory_usage_percent", "header": "MEM%",
+            "width": 6, "align": ">", "format": ".2f"},
+
+        {"key": "hypervisor_num_iops", "header": "hIOPS",
+            "width": 8, "align": ">", "format": ".2f"},
+        {"key": "hypervisor_num_read_iops", "header": "hRIOPS",
+            "width": 8, "align": ">", "format": ".2f"},
+        {"key": "hypervisor_num_write_iops", "header": "hWIOPS",
+            "width": 8, "align": ">", "format": ".2f"},
+
+        {"key": "controller_num_iops", "header": "cIOPS",
+            "width": 8, "align": ">", "format": ".2f"},
+        {"key": "controller_num_read_iops", "header": "cRIOPS",
+            "width": 8, "align": ">", "format": ".2f"},
+        {"key": "controller_num_write_iops", "header": "cWIOPS",
+            "width": 8, "align": ">", "format": ".2f"},
+
+
+        {"key": "num_iops", "header": "IOPS",
+            "width": 8, "align": ">", "format": ".2f"},
+        {"key": "num_read_iops", "header": "rIOPS",
+            "width": 8, "align": ">", "format": ".2f"},
+        {"key": "num_write_iops", "header": "wIOPS",
+            "width": 8, "align": ">", "format": ".2f"}
     ]
 )
 
@@ -759,6 +809,9 @@ class VmReporter(Reporter):
         return vm_stats_dic
 
     def overall_live_report(self, sort="name", node_names=[]):
+        """
+        """
+        # TODO: sort_by and filter_by should be in separate method
         if sort in self.sort_conversion.keys():
             sort_by = self.sort_conversion[sort]
             sort_by_arithmos = self.sort_conversion_arithmos[sort]
@@ -779,6 +832,37 @@ class VmReporter(Reporter):
 
         vm_entities_dict = self._get_live_stats_dic(entity_list,
                                                     VM_OVERALL_REPORT_ARITHMOS_FIELDS)
+        vm_entities_dict = self._stats_unit_conversion(vm_entities_dict)
+
+        if sort_by == "vm_name":
+            return sorted(vm_entities_dict, key=lambda node: node[sort_by])
+        else:
+            return sorted(vm_entities_dict, key=lambda node: node[sort_by], reverse=True)
+
+    def iops_live_report(self, sort="name", node_names=[]):
+        """
+        """
+        # TODO: sort_by and filter_by should be in separate method
+        if sort in self.sort_conversion.keys():
+            sort_by = self.sort_conversion[sort]
+            sort_by_arithmos = self.sort_conversion_arithmos[sort]
+        else:
+            sort_by = self.sort_conversion["name"]
+            sort_by_arithmos = self.sort_conversion_arithmos["name"]
+
+        filter_by = "power_state==on"
+        if node_names:
+            node_names_str = ",".join(["node_name==" + node_name
+                                       for node_name in node_names])
+            filter_by += ";" + node_names_str
+
+        entity_list = self._get_vm_live_stats(
+            field_list=VM_IOPS_REPORT_ARITHMOS_FIELDS,
+            filter_criteria=filter_by,
+            sort_criteria=sort_by_arithmos)
+
+        vm_entities_dict = self._get_live_stats_dic(entity_list,
+                                                    VM_IOPS_REPORT_ARITHMOS_FIELDS)
         vm_entities_dict = self._stats_unit_conversion(vm_entities_dict)
 
         if sort_by == "vm_name":
@@ -1073,6 +1157,11 @@ class UiCli(Ui):
                     sort, node_names)
                 self._report_format_printer(
                     VM_OVERALL_REPORT_CLI_FIELDS, entity_list, time_now)
+            if report_type == "iops":
+                entity_list = self.vm_reporter.iops_live_report(
+                    sort, node_names)
+                self._report_format_printer(
+                    VM_IOPS_REPORT_CLI_FIELDS, entity_list, time_now)
 
     def uvms_overall_time_range_report(self, start_time, end_time, sec=None,
                                        sort="name", node_names=[]):
@@ -1672,7 +1761,8 @@ if __name__ == "__main__":
                     ui_cli.uvms_live_report(args.sec,
                                             args.count,
                                             args.sort,
-                                            args.node_name)
+                                            args.node_name,
+                                            args.report_type)
                 elif args.start_time and args.end_time:
                     ui_cli.uvms_overall_time_range_report(args.start_time,
                                                           args.end_time,
