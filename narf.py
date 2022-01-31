@@ -820,6 +820,26 @@ class VmReporter(Reporter):
             vm_stats_dic.append(vm_dict)
         return vm_stats_dic
 
+    def _get_time_range_stats_dic(self, entity_list, field_list,
+                                  start, end, sampling_interval=30):
+        """
+        Get an entity_list as returned from MasterGetEntitiesStats,
+        parse the entities and stats to a dictinary and returns.
+        """
+        vm_stats_dic = []
+        for vm_pivot in entity_list:
+            vm = {}
+            for field in field_list:
+                value = self._get_time_range_stat_average(
+                    vm_pivot.id, field, start, end,
+                    sampling_interval
+                )
+                vm[field] = value
+            vm["vm_name"] = str(vm_pivot.vm_name)
+            vm["id"] = vm_pivot.id
+            vm_stats_dic.append(vm)
+        return vm_stats_dic
+
     def _get_arithmos_sort_field(self, sort, default_sort_field="name"):
         """
         Returns the arithmos field for sort criteria. The sort key is
@@ -889,87 +909,21 @@ class VmReporter(Reporter):
         return self._sort_entity_dict(ret, sort)
 
     def overall_time_range_report(self, start, end, sort="name", node_names=[]):
-        if sort in self.sort_conversion.keys():
-            sort_by = self.sort_conversion[sort]
-            sort_by_arithmos = self.sort_conversion_arithmos[sort]
-        else:
-            sort_by = self.sort_conversion["name"]
-            sort_by_arithmos = self.sort_conversion_arithmos["name"]
-
-        # TODO: Needs to test on the behavior of when a VM is shutdown,
-        #       and see if there is a way to confirm in which host a VM
-        #       was running during time period of the report.
-        #
-        # Following code filter by running VMs:
-        # filter_by = "power_state==on"
-        # if node_names:
-        #  node_names_str = ",".join(["node_name==" + node_name
-        #                             for node_name in node_names])
-        #  filter_by += ";" + node_names_str
-        #
-        filter_by = ""
-        if node_names:
-            filter_by = ",".join(["node_name==" + node_name
-                                  for node_name in node_names])
+        sort_by_arithmos = self._get_arithmos_sort_field(sort)
+        filter_by = self._get_arithmos_filter_criteria_live(
+            node_names, power_on=False)
 
         vm_list = self._get_vm_live_stats(field_list=["vm_name", "id",
                                                       "node_name"],
                                           filter_criteria=filter_by,
                                           sort_criteria=sort_by_arithmos)
+
         generic_attribute_names = ["node_name"]
+        ret = self._get_time_range_stats_dic(vm_list, VM_OVERALL_REPORT_ARITHMOS_FIELDS,
+                                             start, end)
+        ret = self._stats_unit_conversion(ret)
 
-        sampling_interval = 30
-        all_vms = []
-        for vm in vm_list:
-            # Convert a known list of generic_attributes into a dictionary
-            generic_attributes = self._get_generic_attribute_dict(
-                vm.generic_attribute_list)
-            generic_attributes = self._zeroed_missing_attribute(generic_attributes,
-                                                                generic_attribute_names)
-
-            vm = {
-                "vm_name": vm.vm_name,
-                "id": vm.id,
-                "node_name": generic_attributes["node_name"],
-                "hypervisor_cpu_usage_percent":
-                self._get_time_range_stat_average(
-                    vm.id, "hypervisor_cpu_usage_ppm", start, end,
-                    sampling_interval) / 10000,
-                "hypervisor.cpu_ready_time_percent":
-                self._get_time_range_stat_average(
-                    vm.id, "hypervisor.cpu_ready_time_ppm", start, end,
-                    sampling_interval) / 10000,
-                "memory_usage_percent":
-                self._get_time_range_stat_average(
-                    vm.id, "memory_usage_ppm", start, end,
-                    sampling_interval) / 10000,
-                "controller_num_iops":
-                int(self._get_time_range_stat_average(
-                    vm.id, "controller_num_iops", start, end,
-                    sampling_interval)),
-                "hypervisor_num_iops":
-                int(self._get_time_range_stat_average(
-                    vm.id, "hypervisor_num_iops", start, end,
-                    sampling_interval)),
-                "num_iops":
-                int(self._get_time_range_stat_average(
-                    vm.id, "num_iops", start, end,
-                    sampling_interval)),
-                "controller_io_bandwidth_mBps":
-                self._get_time_range_stat_average(
-                    vm.id, "controller_io_bandwidth_kBps", start, end,
-                    sampling_interval) / 1024,
-                "controller_avg_io_latency_msecs":
-                self._get_time_range_stat_average(
-                    vm.id, "controller_avg_io_latency_usecs", start, end,
-                    sampling_interval) / 1000,
-            }
-            all_vms.append(vm)
-
-        if sort_by == "vm_name":
-            return sorted(all_vms, key=lambda vm: vm[sort_by])
-        else:
-            return sorted(all_vms, key=lambda node: node[sort_by], reverse=True)
+        return self._sort_entity_dict(ret, sort)
 
 
 class Ui(object):
