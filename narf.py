@@ -1048,6 +1048,7 @@ class UiCli(Ui):
                 self._report_format_printer(
                     NODES_LATENCY_REPORT_CLI_FIELDS, entity_list, time_now)
             else:
+                parser.print_usage()
                 sys.stderr.write(
                     "ERROR: Report type \"{}\" not implmented for nodes.\n"
                     .format(report_type))
@@ -1102,6 +1103,7 @@ class UiCli(Ui):
                         step_time.strftime("%Y/%m/%d-%H:%M:%S")
                     )
                 else:
+                    parser.print_usage()
                     sys.stderr.write(
                         "ERROR: Report type \"{}\" not implmented for nodes.\n"
                         .format(report_type))
@@ -1134,9 +1136,16 @@ class UiCli(Ui):
                     sort, node_names)
                 self._report_format_printer(
                     VM_IOPS_REPORT_CLI_FIELDS, entity_list, time_now)
+            else:
+                parser.print_usage()
+                sys.stderr.write(
+                    "ERROR: Report type \"{}\" not implmented for VMs.\n"
+                    .format(report_type))
+                return False
 
     def uvms_overall_time_range_report(self, start_time, end_time, sec=None,
-                                       sort="name", node_names=[]):
+                                       sort="name", node_names=[],
+                                       report_type="overall"):
         """
         Print UVMs overall time range report.
         """
@@ -1147,35 +1156,22 @@ class UiCli(Ui):
             while step_time < end_time:
                 usec_step = int(step_time.strftime("%s") + "000000")
                 usec_delta = int(delta_time.strftime("%s") + "000000")
-                vms = self.vm_reporter.overall_time_range_report(usec_step, usec_delta,
-                                                                 sort, node_names)
-                print("{time:<21} {vm:<30} {cpu:>6} {rdy:>6} {mem:>6} "
-                      "{ciops:>6} {hiops:>6} {iops:>6} {bw:>8} {lat:>8}".format(
-                          time=step_time.strftime("%Y/%m/%d-%H:%M:%S"),
-                          vm="VM Name",
-                          cpu="CPU%",
-                          rdy="RDY%",
-                          mem="MEM%",
-                          ciops="cIOPs",
-                          hiops="hIOPs",
-                          iops="IOPs",
-                          bw="B/W[MB]",
-                          lat="LAT[ms]"
-                      ))
-                for vm in vms:
-                    print("{time:<21} {vm_name:<30} "
-                          "{v[hypervisor_cpu_usage_percent]:>6.2f} "
-                          "{v[hypervisor.cpu_ready_time_percent]:>6.2f} "
-                          "{v[memory_usage_percent]:>6.2f} "
-                          "{v[controller_num_iops]:>6.0f} "
-                          "{v[hypervisor_num_iops]:>6.0f} "
-                          "{v[num_iops]:>6.0f} "
-                          "{v[controller_io_bandwidth_mBps]:>8.2f} "
-                          "{v[controller_avg_io_latency_msecs]:>8.2f} "
-                          .format(time=step_time.strftime("%Y/%m/%d-%H:%M:%S"),
-                                  vm_name=vm["vm_name"][:30],
-                                  v=vm))
-                print("")
+
+                if report_type == "overall":
+                    entity_list = self.vm_reporter.overall_time_range_report(
+                        usec_step, usec_delta, sort, node_names)
+                    self._report_format_printer(
+                        VM_OVERALL_REPORT_CLI_FIELDS,
+                        entity_list,
+                        step_time.strftime("%Y/%m/%d-%H:%M:%S")
+                    )
+                else:
+                    parser.print_usage()
+                    sys.stderr.write(
+                        "ERROR: Report type \"{}\" not implmented for VMs.\n"
+                        .format(report_type))
+                    return False
+
                 step_time = delta_time
                 delta_time += datetime.timedelta(seconds=sec)
 
@@ -1740,7 +1736,8 @@ if __name__ == "__main__":
                                                           args.end_time,
                                                           args.sec,
                                                           args.sort,
-                                                          args.node_name)
+                                                          args.node_name,
+                                                          report_type=args.report_type)
                 else:
                     parser.print_usage()
                     print("ERROR: Invalid date: Arguments --start-time and "
