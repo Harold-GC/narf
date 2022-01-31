@@ -820,67 +820,73 @@ class VmReporter(Reporter):
             vm_stats_dic.append(vm_dict)
         return vm_stats_dic
 
-    def overall_live_report(self, sort="name", node_names=[]):
+    def _get_arithmos_sort_field(self, sort, default_sort_field="name"):
         """
+        Returns the arithmos field for sort criteria. The sort key is
+        translated using 'self.sort_conversion_arithmos' into an arithmos field.
+
+        There is another method _sort_entity_dict() in superclass for sorting.
+        The reason we also need arithmos sort criteria is because there is a maximum
+        numbers of entities returned by arithmos, if sort_criteria is not indicated
+        when calling MasterGetEntitiesStats() there is a risk of missing some of the
+        top VMs.
+
         """
-        # TODO: sort_by and filter_by should be in separate method
         if sort in self.sort_conversion.keys():
-            sort_by = self.sort_conversion[sort]
             sort_by_arithmos = self.sort_conversion_arithmos[sort]
         else:
-            sort_by = self.sort_conversion["name"]
-            sort_by_arithmos = self.sort_conversion_arithmos["name"]
+            sort_by_arithmos = self.sort_conversion_arithmos[default_sort_field]
 
-        filter_by = "power_state==on"
+    def _get_arithmos_filter_criteria_live(self, node_names=[], power_on=True):
+        """
+        Currently only filter criteria for VM is nodes and power state.
+        Power state on is used for live reports, while power state off is used
+        for time range reports.
+        """
+        filter_by = ""
+        if power_on:
+            filter_by = "power_state==on;"
         if node_names:
             node_names_str = ",".join(["node_name==" + node_name
                                        for node_name in node_names])
-            filter_by += ";" + node_names_str
+            filter_by += node_names_str
+        return filter_by
+
+    def overall_live_report(self, sort="name", node_names=[]):
+        """
+        Returns a sorted dictionary with VMs overall stats.
+        """
+        sort_by_arithmos = self._get_arithmos_sort_field(sort)
+        filter_by = self._get_arithmos_filter_criteria_live(node_names)
 
         entity_list = self._get_vm_live_stats(
             field_list=VM_OVERALL_REPORT_ARITHMOS_FIELDS,
             filter_criteria=filter_by,
             sort_criteria=sort_by_arithmos)
 
-        vm_entities_dict = self._get_live_stats_dic(entity_list,
-                                                    VM_OVERALL_REPORT_ARITHMOS_FIELDS)
-        vm_entities_dict = self._stats_unit_conversion(vm_entities_dict)
+        ret = self._get_live_stats_dic(entity_list,
+                                       VM_OVERALL_REPORT_ARITHMOS_FIELDS)
+        ret = self._stats_unit_conversion(ret)
 
-        if sort_by == "vm_name":
-            return sorted(vm_entities_dict, key=lambda node: node[sort_by])
-        else:
-            return sorted(vm_entities_dict, key=lambda node: node[sort_by], reverse=True)
+        return self._sort_entity_dict(ret, sort)
 
     def iops_live_report(self, sort="name", node_names=[]):
         """
+        Returns a sorted dictionary with VMs IOPs stats.
         """
-        # TODO: sort_by and filter_by should be in separate method
-        if sort in self.sort_conversion.keys():
-            sort_by = self.sort_conversion[sort]
-            sort_by_arithmos = self.sort_conversion_arithmos[sort]
-        else:
-            sort_by = self.sort_conversion["name"]
-            sort_by_arithmos = self.sort_conversion_arithmos["name"]
-
-        filter_by = "power_state==on"
-        if node_names:
-            node_names_str = ",".join(["node_name==" + node_name
-                                       for node_name in node_names])
-            filter_by += ";" + node_names_str
+        sort_by_arithmos = self._get_arithmos_sort_field(sort)
+        filter_by = self._get_arithmos_filter_criteria_live(node_names)
 
         entity_list = self._get_vm_live_stats(
             field_list=VM_IOPS_REPORT_ARITHMOS_FIELDS,
             filter_criteria=filter_by,
             sort_criteria=sort_by_arithmos)
 
-        vm_entities_dict = self._get_live_stats_dic(entity_list,
-                                                    VM_IOPS_REPORT_ARITHMOS_FIELDS)
-        vm_entities_dict = self._stats_unit_conversion(vm_entities_dict)
+        ret = self._get_live_stats_dic(entity_list,
+                                       VM_IOPS_REPORT_ARITHMOS_FIELDS)
+        ret = self._stats_unit_conversion(ret)
 
-        if sort_by == "vm_name":
-            return sorted(vm_entities_dict, key=lambda node: node[sort_by])
-        else:
-            return sorted(vm_entities_dict, key=lambda node: node[sort_by], reverse=True)
+        return self._sort_entity_dict(ret, sort)
 
     def overall_time_range_report(self, start, end, sort="name", node_names=[]):
         if sort in self.sort_conversion.keys():
