@@ -565,6 +565,31 @@ class Reporter(object):
                 attributes[desired_attribute] = "-"
         return attributes
 
+    def _sort_entity_dict(self, nodes_stats_dic, sort, default_sort_field="name"):
+        """
+        Get a list of entities dictionaries and a sort key. The sort key is
+        translated into a field using 'self.sort_conversion' and is
+        equivalent to an arithmos field. Then the list is sorted based on
+        this criteria.
+
+        The conversion dictionary 'self.sort_conversion' needs to be defined in the
+        subclasses according to their sorting criteria.
+        """
+        if sort in self.sort_conversion.keys():
+            sort_by = self.sort_conversion[sort]
+        else:
+            sort_by = self.sort_conversion[default_sort_field]
+
+        # This is because the default sort field "name" is the only alphabetic,
+        # other fields are are numeric and needs to be sorted in reverse.
+        # TODO: May need to think better about this later.
+        if sort_by == self.sort_conversion[default_sort_field]:
+            return sorted(nodes_stats_dic,
+                          key=lambda node: node[sort_by])
+        else:
+            return sorted(nodes_stats_dic,
+                          key=lambda node: node[sort_by], reverse=True)
+
 
 class ClusterReporter(Reporter):
     """Reports for Clusters"""
@@ -656,19 +681,6 @@ class NodeReporter(Reporter):
             node["node_id"] = int(node_pivot.id)
             nodes_stats_dic.append(node)
         return nodes_stats_dic
-
-    def _sort_entity_dict(self, nodes_stats_dic, sort):
-        if sort in self.sort_conversion.keys():
-            sort_by = self.sort_conversion[sort]
-        else:
-            sort_by = self.sort_conversion["name"]
-
-        if sort_by == "node_name":
-            return sorted(nodes_stats_dic,
-                          key=lambda node: node[sort_by])
-        else:
-            return sorted(nodes_stats_dic,
-                          key=lambda node: node[sort_by], reverse=True)
 
     def overall_live_report(self, sort="name"):
         """
