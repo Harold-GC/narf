@@ -1129,7 +1129,7 @@ class UiCli(Ui):
                     sort, node_names)
                 self._report_format_printer(
                     VM_OVERALL_REPORT_CLI_FIELDS, entity_list, time_now)
-            if report_type == "iops":
+            elif report_type == "iops":
                 entity_list = self.vm_reporter.iops_live_report(
                     sort, node_names)
                 self._report_format_printer(
