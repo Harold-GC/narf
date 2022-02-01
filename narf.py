@@ -170,8 +170,8 @@ NODES_BANDWIDTH_REPORT_ARITHMOS_FIELDS = (
         "controller_write_io_bandwidth_kBps",
 
         "io_bandwidth_kBps",
-        "write_io_bandwidth_kBps",
         "read_io_bandwidth_kBps",
+        "write_io_bandwidth_kBps",
     ]
 )
 
