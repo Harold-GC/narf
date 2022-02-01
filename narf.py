@@ -1017,8 +1017,8 @@ class UiCli(Ui):
         print("")
         return True
 
-    def nodes_overall_live_report(self, sec, count, sort="name",
-                                  node_names=[], report_type="overall"):
+    def nodes_live_report(self, sec, count, sort="name",
+                          node_names=[], report_type="overall"):
         """
         Print nodes live reports.
         """
@@ -1056,9 +1056,9 @@ class UiCli(Ui):
 
         return True
 
-    def nodes_overall_time_range_report(self, start_time, end_time, sec=None,
-                                        sort="name", node_names=[],
-                                        report_type="overall"):
+    def nodes_time_range_report(self, start_time, end_time, sec=None,
+                                sort="name", node_names=[],
+                                report_type="overall"):
         """
         Print nodes overall time range report.
         """
@@ -1143,9 +1143,9 @@ class UiCli(Ui):
                     .format(report_type))
                 return False
 
-    def uvms_overall_time_range_report(self, start_time, end_time, sec=None,
-                                       sort="name", node_names=[],
-                                       report_type="overall"):
+    def uvms_time_range_report(self, start_time, end_time, sec=None,
+                               sort="name", node_names=[],
+                               report_type="overall"):
         """
         Print UVMs overall time range report.
         """
@@ -1705,14 +1705,14 @@ if __name__ == "__main__":
                 ui_cli = UiCli()
 
                 if not args.start_time and not args.end_time:
-                    ui_cli.nodes_overall_live_report(
+                    ui_cli.nodes_live_report(
                         args.sec, args.count, args.sort, report_type=args.report_type)
                 elif args.start_time and args.end_time:
-                    ui_cli.nodes_overall_time_range_report(args.start_time,
-                                                           args.end_time,
-                                                           args.sec,
-                                                           args.sort,
-                                                           report_type=args.report_type)
+                    ui_cli.nodes_time_range_report(args.start_time,
+                                                   args.end_time,
+                                                   args.sec,
+                                                   args.sort,
+                                                   report_type=args.report_type)
                 else:
                     parser.print_usage()
                     print("ERROR: Invalid date: Arguments --start-time and "
@@ -1732,12 +1732,12 @@ if __name__ == "__main__":
                                             args.node_name,
                                             args.report_type)
                 elif args.start_time and args.end_time:
-                    ui_cli.uvms_overall_time_range_report(args.start_time,
-                                                          args.end_time,
-                                                          args.sec,
-                                                          args.sort,
-                                                          args.node_name,
-                                                          report_type=args.report_type)
+                    ui_cli.uvms_time_range_report(args.start_time,
+                                                  args.end_time,
+                                                  args.sec,
+                                                  args.sort,
+                                                  args.node_name,
+                                                  report_type=args.report_type)
                 else:
                     parser.print_usage()
                     print("ERROR: Invalid date: Arguments --start-time and "
