@@ -303,10 +303,6 @@ VM_IOPS_REPORT_ARITHMOS_FIELDS = (
 
         "controller_num_iops",
         "controller_num_read_iops", "controller_num_write_iops",
-
-        "num_iops",
-        "num_read_iops", "num_write_iops"
-
     ]
 )
 
@@ -333,13 +329,6 @@ VM_IOPS_REPORT_CLI_FIELDS = (
         {"key": "controller_num_write_iops", "header": "cWIOPS",
             "width": 8, "align": ">", "format": ".2f"},
 
-
-        {"key": "num_iops", "header": "IOPS",
-            "width": 8, "align": ">", "format": ".2f"},
-        {"key": "num_read_iops", "header": "rIOPS",
-            "width": 8, "align": ">", "format": ".2f"},
-        {"key": "num_write_iops", "header": "wIOPS",
-            "width": 8, "align": ">", "format": ".2f"}
     ]
 )
 
