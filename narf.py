@@ -265,7 +265,7 @@ VM_OVERALL_REPORT_ARITHMOS_FIELDS = (
         "hypervisor_cpu_usage_ppm",
         "hypervisor.cpu_ready_time_ppm",
         "memory_usage_ppm", "hypervisor_num_iops",
-        "controller_num_iops", "num_iops",
+        "controller_num_iops",
         "controller_io_bandwidth_kBps",
         "controller_avg_io_latency_usecs"
     ]
@@ -285,12 +285,10 @@ VM_OVERALL_REPORT_CLI_FIELDS = (
             "width": 8, "align": ">", "format": ".2f"},
         {"key": "controller_num_iops", "header": "cIOPS",
             "width": 8, "align": ">", "format": ".2f"},
-        {"key": "num_iops", "header": "IOPS",
-            "width": 8, "align": ">", "format": ".2f"},
         {"key": "controller_io_bandwidth_mBps",
-            "header": "B/W[MB]", "width": 8, "align": ">", "format": ".2f"},
+            "header": "cB/W[MB]", "width": 8, "align": ">", "format": ".2f"},
         {"key": "controller_avg_io_latency_msecs",
-            "header": "LAT[ms]", "width": 8, "align": ">", "format": ".2f"}
+            "header": "cLAT[ms]", "width": 8, "align": ">", "format": ".2f"}
 
     ]
 )
