@@ -852,11 +852,11 @@ class VmReporter(Reporter):
         """
         filter_by = ""
         if power_on:
-            filter_by = "power_state==on;"
+            filter_by = "power_state==on"
         if node_names:
             node_names_str = ",".join(["node_name==" + node_name
                                        for node_name in node_names])
-            filter_by += node_names_str
+            filter_by += ";" + node_names_str
         return filter_by
 
     def overall_live_report(self, sort="name", node_names=[]):
