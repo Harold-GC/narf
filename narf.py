@@ -916,6 +916,13 @@ class VmReporter(Reporter):
         return self._sort_entity_dict(ret, sort)
 
 
+class VgReporter(Reporter):
+    """Reporter for Volume Groups"""
+
+    def __init__(self):
+        pass
+
+
 class Ui(object):
     """Display base"""
 
