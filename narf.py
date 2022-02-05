@@ -273,7 +273,7 @@ VM_OVERALL_REPORT_ARITHMOS_FIELDS = (
 
 VM_OVERALL_REPORT_CLI_FIELDS = (
     [
-        {"key": "vm_name", "header": "Node",
+        {"key": "vm_name", "header": "VM Name",
             "width": 20, "align": "<", "format": ".20"},
         {"key": "hypervisor_cpu_usage_percent", "header": "CPU%",
             "width": 6, "align": ">", "format": ".2f"},
