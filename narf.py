@@ -333,6 +333,31 @@ VM_IOPS_REPORT_CLI_FIELDS = (
 )
 
 # ========================================================================
+# Definition of volume_group reports.
+VG_OVERALL_REPORT_ARITHMOS_FIELDS = (
+    [
+        "volume_group_name", "id",
+        "controller_num_iops",
+        "controller_io_bandwidth_kBps",
+        "controller_avg_io_latency_usecs"
+    ]
+)
+
+VG_OVERALL_REPORT_CLI_FIELDS = (
+    [
+        {"key": "volume_group_name", "header": "Volume group",
+            "width": 30, "align": "<", "format": ".30"},
+        {"key": "controller_num_iops", "header": "cIOPS",
+            "width": 8, "align": ">", "format": ".2f"},
+        {"key": "controller_io_bandwidth_mBps",
+            "header": "cB/W[MB]", "width": 8, "align": ">", "format": ".2f"},
+        {"key": "controller_avg_io_latency_msecs",
+            "header": "cLAT[ms]", "width": 8, "align": ">", "format": ".2f"}
+
+    ]
+)
+
+# ========================================================================
 
 
 class Reporter(object):
@@ -920,7 +945,98 @@ class VgReporter(Reporter):
     """Reporter for Volume Groups"""
 
     def __init__(self):
-        pass
+        Reporter.__init__(self)
+        self._ARITHMOS_ENTITY_PROTO = ArithmosEntityProto.kVolumeGroup
+
+        # The reason this conversion exists is because we want to abstract
+        # the actual attribute names with something more human friendly
+        # and easy to remember. We also want to abstract this from the
+        # UI classes.
+        self.sort_conversion = {
+            "name": "volume_group_name",
+            "iops": "controller_num_iops",
+            "bw": "controller_io_bandwidth_mBps",
+            "lat": "controller_avg_io_latency_msecs"
+        }
+
+        self.sort_conversion_arithmos = {
+            "name": "vm_name",
+            "iops": "-controller_num_iops",
+            "bw": "-controller_io_bandwidth_kBps",
+            "lat": "-controller_avg_io_latency_usecs"
+        }
+
+    def _get_vg_live_stats(self, sort_criteria=None, filter_criteria=None,
+                           search_term=None, field_list=None):
+        response = self._get_live_stats(self._ARITHMOS_ENTITY_PROTO,
+                                        sort_criteria, filter_criteria,
+                                        search_term, field_list)
+        entity_list = response.entity_list.volume_group
+        return entity_list
+
+    def _get_live_stats_dic(self, entity_list, field_list):
+        """
+        Get an entity_list as returned from MasterGetEntitiesStats,
+        parse the entities and stats to a dictinary and returns.
+        """
+        vg_stats_dic = []
+        for vg_entity in entity_list:
+            vg_dict = self._get_entity_stats_from_proto(vg_entity, field_list)
+            vg_dict["id"] = vg_entity.id
+            vg_stats_dic.append(vg_dict)
+        return vg_stats_dic
+
+    def _get_time_range_stats_dic(self, entity_list, field_list,
+                                  start, end, sampling_interval=30):
+        """
+        Get an entity_list as returned from MasterGetEntitiesStats,
+        parse the entities and stats to a dictinary and returns.
+        """
+        vg_stats_dic = []
+        for vg_pivot in entity_list:
+            vg = {}
+            for field in field_list:
+                value = self._get_time_range_stat_average(
+                    vg_pivot.id, field, start, end,
+                    sampling_interval
+                )
+                vg[field] = value
+            vg["volume_group_name"] = str(vg_pivot.volume_group_name)
+            vg["id"] = vg_pivot.id
+            vg_stats_dic.append(vg)
+        return vg_stats_dic
+
+    def _get_arithmos_sort_field(self, sort, default_sort_field="name"):
+        """
+        Returns the arithmos field for sort criteria. The sort key is
+        translated using 'self.sort_conversion_arithmos' into an arithmos field.
+
+        There is another method _sort_entity_dict() in superclass for sorting.
+        The reason we also need arithmos sort criteria is because there is a maximum
+        numbers of entities returned by arithmos, if sort_criteria is not indicated
+        when calling MasterGetEntitiesStats() there is a risk of missing some of the
+        top VMs.
+
+        """
+        if sort in self.sort_conversion.keys():
+            sort_by_arithmos = self.sort_conversion_arithmos[sort]
+        else:
+            sort_by_arithmos = self.sort_conversion_arithmos[default_sort_field]
+
+    def overall_live_report(self, sort="name"):
+        """
+        Returns a sorted dictionary with volume groups overall stats.
+        """
+        sort_by_arithmos = self._get_arithmos_sort_field(sort)
+
+        entity_list = self._get_vg_live_stats(
+            field_list=VG_OVERALL_REPORT_ARITHMOS_FIELDS,
+            sort_criteria=sort_by_arithmos)
+        ret = self._get_live_stats_dic(entity_list,
+                                       VG_OVERALL_REPORT_ARITHMOS_FIELDS)
+        ret = self._stats_unit_conversion(ret)
+
+        return self._sort_entity_dict(ret, sort)
 
 
 class Ui(object):
@@ -930,6 +1046,7 @@ class Ui(object):
         self.cluster_reporter = ClusterReporter()
         self.node_reporter = NodeReporter()
         self.vm_reporter = VmReporter()
+        self.vg_reporter = VgReporter()
         self.UiUuid = uuid.uuid1()
 
     def time_validator(self, start_time, end_time,
@@ -1171,6 +1288,23 @@ class UiCli(Ui):
 
                 step_time = delta_time
                 delta_time += datetime.timedelta(seconds=sec)
+
+    def vg_live_report(self, sec, count, sort="name",
+                       report_type="overall"):
+        if not sec or sec < 0:
+            sec = 0
+            count = 1
+        else:
+            if not count or count < 0:
+                count = 1000
+
+        for i in range(count):
+            time.sleep(sec)
+            time_now = datetime.datetime.now().strftime("%Y/%m/%d-%H:%M:%S")
+            if report_type == "overall":
+                entity_list = self.vg_reporter.overall_live_report(sort)
+                self._report_format_printer(
+                    VG_OVERALL_REPORT_CLI_FIELDS, entity_list, time_now)
 
 
 class UiInteractive(Ui):
@@ -1667,11 +1801,13 @@ if __name__ == "__main__":
             'however improbable, must be the truth." Spock.'
         )
         parser.add_argument('--nodes', '-n', action='store_true',
-                            help="Overall nodes activity report")
+                            help="Nodes activity report")
         parser.add_argument('--node-name', '-N', action='append',
                             help="Filter VMs by node name")
         parser.add_argument('--uvms', '-v', action='store_true',
-                            help="Overall user VMs activity report")
+                            help="VMs activity report")
+        parser.add_argument('--volume-groups', '-g', action='store_true',
+                            help="Volume Groups activity report")
         parser.add_argument('--sort', '-s',
                             choices=["name", "cpu", "rdy", "mem",
                                      "iops", "bw", "lat"],
@@ -1740,6 +1876,16 @@ if __name__ == "__main__":
                     print("ERROR: Invalid date: Arguments --start-time and "
                           "--end-time should come together")
 
+            except KeyboardInterrupt:
+                print("Zort!")
+                exit(0)
+
+        elif args.volume_groups:
+            try:
+                ui_cli = UiCli()
+                ui_cli.vg_live_report(args.sec,
+                                      args.count,
+                                      args.sort)
             except KeyboardInterrupt:
                 print("Zort!")
                 exit(0)
