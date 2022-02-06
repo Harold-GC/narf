@@ -2,12 +2,13 @@
 
 NARF stands for **N**utanix **A**ctivity **R**eport **F**acilitator.
 
-Inspired in old school UNIX commands like `sar`, `iostat` and `top`, aim to be a simple tool to query and report information from Nutanix clusters performance datasource (arithmos DB). Later will add a feature to export the data into files that can be uploaded to a graphical tool like Grafana.
+Inspired in old school UNIX commands like `sar`, `iostat` and `top`, aim to be a simple tool to query and report information from Nutanix clusters performance datasource (arithmos DB at the moment). With a feature to export the data into line protocol files that can be uploaded and visualized into a graphical tool like Grafana.
 
 ## Usage
 ```
+nutanix@CVM:~/tmp$ ./narf.py -h
 usage: narf.py [-h] [--nodes] [--node-name NODE_NAME] [--uvms]
-               [--sort {name,cpu,rdy,mem,iops,bw,lat}]
+               [--volume-groups] [--sort {name,cpu,rdy,mem,iops,bw,lat}]
                [--report-type {iops,bw,lat}] [-start-time START_TIME]
                [-end-time END_TIME] [--export] [--test]
                [sec] [count]
@@ -20,10 +21,11 @@ positional arguments:
 
 optional arguments:
   -h, --help            show this help message and exit
-  --nodes, -n           Overall nodes activity report
+  --nodes, -n           Nodes activity report
   --node-name NODE_NAME, -N NODE_NAME
                         Filter VMs by node name
-  --uvms, -v            Overall user VMs activity report
+  --uvms, -v            VMs activity report
+  --volume-groups, -g   Volume Groups activity report
   --sort {name,cpu,rdy,mem,iops,bw,lat}, -s {name,cpu,rdy,mem,iops,bw,lat}
                         Sort output
   --report-type {iops,bw,lat}, -t {iops,bw,lat}
@@ -42,6 +44,18 @@ be the truth." Spock.
 ```
 
 ## Example outputs
+### Interactive mode nodes CPU/MEM and VMs view (top like interface)
+
+<img src="https://user-images.githubusercontent.com/52970459/152698955-b712e95d-6507-40b3-ba79-21de1a37958e.jpg" alt="narf_interactive" style="width: 550px;">
+
+### Interactive mode nodes IOPS and Volume Groups view (top like interface)
+
+<img src="https://user-images.githubusercontent.com/52970459/152699048-e52c994b-01f6-476e-8f38-6d6d9e6c4999.jpg" alt="narf_interactive" style="width: 550px;">
+
+### Interactive mode VM filtered by node view (top like interface)
+
+<img src="https://user-images.githubusercontent.com/52970459/152699109-b784fbb2-066c-4635-b3b3-ec46d06f0518.jpg" alt="narf_interactive" style="width: 550px;">
+
 ### Node report
 ```
 nutanix@CVM:~/tmp$ ./narf.py -n 2 2
@@ -62,7 +76,7 @@ nutanix@CVM:~/tmp$ ./narf.py -n 2 2
 
 ### VM report filtered by node and sort by CPU ready time
 ```
-nutanix@NTNX-13SM31310001-D-CVM:10.66.38.45:~/tmp$ ./narf.py -vN Prolix1 -s rdy
+nutanix@CVM:~/tmp$ ./narf.py -vN Prolix1 -s rdy
 2022/02/02-23:31:26 | Node                   CPU%   RDY%   MEM%    hIOPS    cIOPS cB/W[MB] cLAT[ms] 
 2022/02/02-23:31:26 | harold-ocp-cp-1       31.26  46.64  86.04     0.00    41.00     0.62     2.94 
 2022/02/02-23:31:26 | harold-ocp-cp-3       26.48  44.88  66.25     0.00    39.00     0.60     3.81 
@@ -86,7 +100,7 @@ nutanix@NTNX-13SM31310001-D-CVM:10.66.38.45:~/tmp$ ./narf.py -vN Prolix1 -s rdy
 
 ### Time range node report with one hour sample sorted by latency
 ```
-nutanix@NTNX-13SM31310001-D-CVM:10.66.38.45:~/tmp$ ./narf.py -ns lat -S 2022/01/01-09:00:00 -E 2022/01/01-12:00:00 3600
+nutanix@CVM:~/tmp$ ./narf.py -ns lat -S 2022/01/01-09:00:00 -E 2022/01/01-12:00:00 3600
 2022/01/01-09:00:00 | Node                   CPU%   MEM%    hIOPS    cIOPS     IOPS  B/W[MB]  LAT[ms] 
 2022/01/01-09:00:00 | Prolix3               95.13  73.91    -1.00   173.26    41.22     2.04     1.40 
 2022/01/01-09:00:00 | Prolix4               75.71  96.21    -1.00  1213.31    51.37     2.08     1.27 
@@ -111,7 +125,7 @@ nutanix@NTNX-13SM31310001-D-CVM:10.66.38.45:~/tmp$ ./narf.py -ns lat -S 2022/01/
 
 ### Time range VM report with one hour sample sorted by memory
 ```
-nutanix@NTNX-13SM31310001-D-CVM:10.66.38.45:~/tmp$ ./narf.py -vs mem -N prolix1 -S 2022/01/01-09:00:00 -E 2022/01/01-11:00:00 3600
+nutanix@CVM:~/tmp$ ./narf.py -vs mem -N prolix1 -S 2022/01/01-09:00:00 -E 2022/01/01-11:00:00 3600
 2022/01/01-09:00:00 | Node                   CPU%   RDY%   MEM%    hIOPS    cIOPS cB/W[MB] cLAT[ms] 
 2022/01/01-09:00:00 | NTNX-14SM15510002-A-  62.19   2.57  69.53    -1.00    -1.00    -1.00    -1.00 
 2022/01/01-09:00:00 | harold-ocp-cp-1       23.88  14.58  56.30    -1.00    35.40     0.49     2.62 
@@ -152,10 +166,6 @@ nutanix@NTNX-13SM31310001-D-CVM:10.66.38.45:~/tmp$ ./narf.py -vs mem -N prolix1 
 2022/01/01-10:00:00 | To be Removed - NTNX  -1.00  -1.00  -1.00    -1.00    -1.00    -1.00    -1.00 
 2022/01/01-10:00:00 | M-vLAB-AD02           -1.00  -1.00  -1.00    -1.00    -1.00    -1.00    -1.00 
 ```
-
-### Interactive mode (top like interface)
-
-<img src="https://user-images.githubusercontent.com/52970459/149036673-bd397213-575b-49d3-86a1-2f69cd272348.jpg" alt="narf_interactive" style="width: 550px;">
 
 ## Design
 
@@ -309,9 +319,11 @@ Splitting tasks/features according to each interface, some taks intertwine betwe
   - [X] Define export files in line protocol format @harold Jan 9, 2022
 
 ## Why narf?
-I had almost decided to change the name from `sre_perf` to `nar` for a while, to make it sound more UNIX like (I thougth about `nstat` but that's already in use), then one day it start lingering in my head as `narf`, that's when I remembered about _Pinky and The Brain_... the sound "_just say narf_" is some sort of "_jacuna matata_" from Pinky, the reflection of The Brain just before the song is quite cliche but I still believe with a deep meaning.
+I had almost decided to change the name from `sre_perf` to `nar` for a while, to make it sound more UNIX like (I thougth about `nstat` but that's already in use), then one day it start lingering in my head as `narf`, that's when I remembered about _Pinky and The Brain_... the song "_just say narf_" is some sort of "_jacuna matata_" from Pinky, the reflection of The Brain just before the song is quite cliche but I still believe with a deep meaning.
 
 Initially the letter ***F*** had no meaning, and it was there just to make the command sounds fun (fun things are memorable, more easy to remember), then a friend suggested ***F***acilitator and I found it quite convenient.
+
+Click on the image : )
 
 [![narf](https://user-images.githubusercontent.com/52970459/147395459-03f77395-12cb-429a-a7fa-0b773353e7b6.jpg)](https://www.youtube.com/watch?v=lZBQ0tXA-QM)
 
