@@ -1328,9 +1328,9 @@ class UiInteractive(Ui):
             len(self.node_reporter.overall_live_report()) + 3, 87)
         self.nodes_io_pad.border()
 
-        self.vm_overall_pad = curses.newpad(
+        self.entities_pad = curses.newpad(
             len(self.vm_reporter.overall_live_report()) + 3, 87)
-        self.vm_overall_pad.border()
+        self.entities_pad.border()
 
         self.initialize_colors()
         self.initialize_strings()
@@ -1565,9 +1565,9 @@ class UiInteractive(Ui):
                                 pad_size_y, pad_size_x)
         return y + pad_size_y
 
-    def render_vm_overall_pad(self, y, x):
+    def render_entities_pad(self, y, x):
         self.stdscr.noutrefresh()
-        self.vm_overall_pad.clear()
+        self.entities_pad.clear()
 
         if self.active_node:
             vms = self.vm_reporter.overall_live_report(
@@ -1575,53 +1575,53 @@ class UiInteractive(Ui):
         else:
             vms = self.vm_reporter.overall_live_report(
                 self.vm_sort)
-        self.vm_overall_pad = curses.newpad(len(vms) + 3, 87)
-        self.vm_overall_pad.border()
+        self.entities_pad = curses.newpad(len(vms) + 3, 87)
+        self.entities_pad.border()
 
-        pad_size_y, pad_size_x = self.vm_overall_pad.getmaxyx()
+        pad_size_y, pad_size_x = self.entities_pad.getmaxyx()
 
-        self.vm_overall_pad.attron(curses.A_BOLD)
-        self.vm_overall_pad.addstr(0, 3, " Overall VMs ")
-        self.vm_overall_pad.attroff(curses.A_BOLD)
+        self.entities_pad.attron(curses.A_BOLD)
+        self.entities_pad.addstr(0, 3, " Overall VMs ")
+        self.entities_pad.attroff(curses.A_BOLD)
 
-        self.vm_overall_pad.addstr(0, pad_size_x - 15, " Sort: {0:<4} "
-                                   .format(self.vm_sort))
+        self.entities_pad.addstr(0, pad_size_x - 15, " Sort: {0:<4} "
+                                 .format(self.vm_sort))
 
         if self.active_node:
-            self.vm_overall_pad.attron(curses.color_pair(self.BLACK_WHITE))
-        self.vm_overall_pad.attron(curses.A_BOLD)
-        self.vm_overall_pad.addstr(1, 1,
-                                   " {vm_name:<30} {cpu:>6} {rdy:>6} {mem:>6} {ciops:>6} "
-                                   "{hiops:>6} {bw:>8} {lat:>8}".format(
-                                       vm_name="VM Name",
-                                       cpu="CPU%",
-                                       rdy="RDY%",
-                                       mem="MEM%",
-                                       ciops="cIOPs",
-                                       hiops="hIOPs",
-                                       iops="IOPs",
-                                       bw="B/W[MB]",
-                                       lat="LAT[ms]"))
+            self.entities_pad.attron(curses.color_pair(self.BLACK_WHITE))
+        self.entities_pad.attron(curses.A_BOLD)
+        self.entities_pad.addstr(1, 1,
+                                 " {vm_name:<30} {cpu:>6} {rdy:>6} {mem:>6} {ciops:>6} "
+                                 "{hiops:>6} {bw:>8} {lat:>8}".format(
+                                     vm_name="VM Name",
+                                     cpu="CPU%",
+                                     rdy="RDY%",
+                                     mem="MEM%",
+                                     ciops="cIOPs",
+                                     hiops="hIOPs",
+                                     iops="IOPs",
+                                     bw="B/W[MB]",
+                                     lat="LAT[ms]"))
 
-        self.vm_overall_pad.attroff(curses.A_BOLD)
+        self.entities_pad.attroff(curses.A_BOLD)
         if self.active_node:
-            self.vm_overall_pad.attroff(curses.color_pair(self.BLACK_WHITE))
+            self.entities_pad.attroff(curses.color_pair(self.BLACK_WHITE))
 
         for i in range(0, len(vms)):
             vm = vms[i]
 
-            self.vm_overall_pad.addstr(i + 2, 1,
-                                       " {vm_name:<30} "
-                                       "{v[hypervisor_cpu_usage_percent]:>6.2f} "
-                                       "{v[hypervisor.cpu_ready_time_percent]:>6.2f} "
-                                       "{v[memory_usage_percent]:>6.2f} "
-                                       "{v[controller_num_iops]:>6} "
-                                       "{v[hypervisor_num_iops]:>6} "
-                                       "{v[controller_io_bandwidth_mBps]:>8.2f} "
-                                       "{v[controller_avg_io_latency_msecs]:>8.2f} "
-                                       .format(v=vm, vm_name=vm["vm_name"][:30]))
+            self.entities_pad.addstr(i + 2, 1,
+                                     " {vm_name:<30} "
+                                     "{v[hypervisor_cpu_usage_percent]:>6.2f} "
+                                     "{v[hypervisor.cpu_ready_time_percent]:>6.2f} "
+                                     "{v[memory_usage_percent]:>6.2f} "
+                                     "{v[controller_num_iops]:>6} "
+                                     "{v[hypervisor_num_iops]:>6} "
+                                     "{v[controller_io_bandwidth_mBps]:>8.2f} "
+                                     "{v[controller_avg_io_latency_msecs]:>8.2f} "
+                                     .format(v=vm, vm_name=vm["vm_name"][:30]))
 
-        self.safe_noautorefresh(self.vm_overall_pad, 0, 0, y, x,
+        self.safe_noautorefresh(self.entities_pad, 0, 0, y, x,
                                 pad_size_y, pad_size_x)
         return y + pad_size_y
 
@@ -1658,7 +1658,7 @@ class UiInteractive(Ui):
 
                 # Display VMs pad
                 if current_y_position < self.height - 2:
-                    current_y_position = self.render_vm_overall_pad(
+                    current_y_position = self.render_entities_pad(
                         current_y_position, 1)
 
                 # Refresh the screen
