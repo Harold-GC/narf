@@ -345,7 +345,7 @@ VG_OVERALL_REPORT_ARITHMOS_FIELDS = (
 
 VG_OVERALL_REPORT_CLI_FIELDS = (
     [
-        {"key": "volume_group_name", "header": "Volume group",
+        {"key": "volume_group_name", "header": "VG name",
             "width": 30, "align": "<", "format": ".30"},
         {"key": "controller_num_iops", "header": "cIOPS",
             "width": 8, "align": ">", "format": ".2f"},
@@ -1336,9 +1336,11 @@ class UiInteractive(Ui):
         self.initialize_strings()
 
         self.key = 0
-        self.vm_sort = "cpu"
         self.nodes_sort = "name"
+        self.vm_sort = "cpu"
+        self.vg_sort = "name"
         self.nodes_pad = "cpu"
+        self.entities_pad_to_display = "vm"
         self.nodes = []
         self.active_node = None
         self.height = 0
@@ -1432,6 +1434,15 @@ class UiInteractive(Ui):
             return "cpu"
         return self.vm_sort
 
+    def get_vg_sort_label(self, sort_key):
+        if sort_key == ord('i'):
+            return "iops"
+        if sort_key == ord('b'):
+            return "bw"
+        if sort_key == ord('l'):
+            return "lat"
+        return self.vg_sort
+
     def toggle_nodes_pad(self, toggle_key):
         if toggle_key == ord('n'):
             if self.nodes_pad == "cpu":
@@ -1453,12 +1464,20 @@ class UiInteractive(Ui):
                     self.active_node = self.nodes[i + 1]["node_name"]
                     return
 
+    def toggle_entities_pad(self, toggle_key):
+        if toggle_key == ord('g'):
+            self.entities_pad_to_display = "vg"
+        elif toggle_key == ord('v'):
+            self.entities_pad_to_display = "vm"
+
     def handle_key_press(self):
         self.key = self.stdscr.getch()
         self.nodes_sort = self.get_nodes_sort_label(self.key)
         self.vm_sort = self.get_vm_sort_label(self.key)
+        self.vg_sort = self.get_vg_sort_label(self.key)
         self.toggle_nodes_pad(self.key)
         self.toggle_active_node(self.key)
+        self.toggle_entities_pad(self.key)
 
     def render_header(self):
         # Turning on attributes for title
@@ -1565,7 +1584,70 @@ class UiInteractive(Ui):
                                 pad_size_y, pad_size_x)
         return y + pad_size_y
 
-    def render_entities_pad(self, y, x):
+    def _render_entity_list(self, y, x, field_list, entity_list, title, title_sort):
+        header_format_string = ""
+        entity_format_string = ""
+        for i in range(len(field_list)):
+            header_format_string += ("{" +
+                                     str(i) + ":" +
+                                     field_list[i]["align"] +
+                                     str(field_list[i]["width"]) +
+                                     "} "
+                                     )
+            entity_format_string += ("{" +
+                                     str(i) + ":" +
+                                     field_list[i]["align"] +
+                                     str(field_list[i]["width"]) +
+                                     field_list[i]["format"] +
+                                     "} "
+                                     )
+        header_list = []
+        for i in range(len(field_list)):
+            header_list.append(field_list[i]["header"])
+
+        self.stdscr.noutrefresh()
+        self.entities_pad.clear()
+
+        self.entities_pad = curses.newpad(
+            len(entity_list) + 3, len(header_format_string.format(*header_list)) + 3)
+        self.entities_pad.border()
+
+        pad_size_y, pad_size_x = self.entities_pad.getmaxyx()
+
+        self.entities_pad.attron(curses.A_BOLD)
+        self.entities_pad.addstr(0, 3, " " + title + " ")
+        self.entities_pad.attroff(curses.A_BOLD)
+
+        self.entities_pad.addstr(0, pad_size_x - 15, title_sort)
+
+        self.entities_pad.attron(curses.A_BOLD)
+        self.entities_pad.addstr(
+            1, 2, header_format_string.format(*header_list))
+        self.entities_pad.attroff(curses.A_BOLD)
+
+        for line_num in range(0, len(entity_list)):
+            entity = entity_list[line_num]
+            entity_stat_list = []
+            for i in range(len(field_list)):
+                stat_key = field_list[i]["key"]
+                stat_value = entity[stat_key]
+                entity_stat_list.append(stat_value)
+            self.entities_pad.addstr(
+                line_num + 2, 1, entity_format_string.format(*entity_stat_list))
+
+        self.safe_noautorefresh(self.entities_pad, 0, 0, y, x,
+                                pad_size_y, pad_size_x)
+        return y + pad_size_y
+
+    def render_vg_list(self, y, x):
+
+        vgs = self.vg_reporter.overall_live_report(self.vg_sort)
+
+        self._render_entity_list(
+            y, x, VG_OVERALL_REPORT_CLI_FIELDS, vgs, "Volume Groups",
+            " Sort: {0:<4} ".format(self.vg_sort))
+
+    def render_vm_pad(self, y, x):
         self.stdscr.noutrefresh()
         self.entities_pad.clear()
 
@@ -1581,7 +1663,7 @@ class UiInteractive(Ui):
         pad_size_y, pad_size_x = self.entities_pad.getmaxyx()
 
         self.entities_pad.attron(curses.A_BOLD)
-        self.entities_pad.addstr(0, 3, " Overall VMs ")
+        self.entities_pad.addstr(0, 3, " Virtual Machines ")
         self.entities_pad.attroff(curses.A_BOLD)
 
         self.entities_pad.addstr(0, pad_size_x - 15, " Sort: {0:<4} "
@@ -1656,10 +1738,14 @@ class UiInteractive(Ui):
                         current_y_position = self.render_nodes_io_pad(
                             current_y_position, 1)
 
-                # Display VMs pad
+                # Display entities pad
                 if current_y_position < self.height - 2:
-                    current_y_position = self.render_entities_pad(
-                        current_y_position, 1)
+                    if self.entities_pad_to_display == "vm":
+                        current_y_position = self.render_vm_pad(
+                            current_y_position, 1)
+                    elif self.entities_pad_to_display == "vg":
+                        current_y_position = self.render_vg_list(
+                            current_y_position, 1)
 
                 # Refresh the screen
                 self.stdscr.noutrefresh()
