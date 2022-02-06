@@ -337,6 +337,7 @@ VM_IOPS_REPORT_CLI_FIELDS = (
 VG_OVERALL_REPORT_ARITHMOS_FIELDS = (
     [
         "volume_group_name", "id",
+        "num_virtual_disks",
         "controller_num_iops",
         "controller_io_bandwidth_kBps",
         "controller_avg_io_latency_usecs"
@@ -347,6 +348,8 @@ VG_OVERALL_REPORT_CLI_FIELDS = (
     [
         {"key": "volume_group_name", "header": "VG name",
             "width": 30, "align": "<", "format": ".30"},
+        {"key": "num_virtual_disks", "header": "vDiks",
+            "width": 8, "align": ">", "format": ".2f"},
         {"key": "controller_num_iops", "header": "cIOPS",
             "width": 8, "align": ">", "format": ".2f"},
         {"key": "controller_io_bandwidth_mBps",
@@ -960,7 +963,7 @@ class VgReporter(Reporter):
         }
 
         self.sort_conversion_arithmos = {
-            "name": "vm_name",
+            "name": "volume_group_name",
             "iops": "-controller_num_iops",
             "bw": "-controller_io_bandwidth_kBps",
             "lat": "-controller_avg_io_latency_usecs"
@@ -1022,6 +1025,7 @@ class VgReporter(Reporter):
             sort_by_arithmos = self.sort_conversion_arithmos[sort]
         else:
             sort_by_arithmos = self.sort_conversion_arithmos[default_sort_field]
+        return sort_by_arithmos
 
     def overall_live_report(self, sort="name"):
         """
@@ -1633,7 +1637,7 @@ class UiInteractive(Ui):
                 stat_value = entity[stat_key]
                 entity_stat_list.append(stat_value)
             self.entities_pad.addstr(
-                line_num + 2, 1, entity_format_string.format(*entity_stat_list))
+                line_num + 2, 2, entity_format_string.format(*entity_stat_list))
 
         self.safe_noautorefresh(self.entities_pad, 0, 0, y, x,
                                 pad_size_y, pad_size_x)
