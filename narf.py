@@ -1234,6 +1234,9 @@ class UiCli(Ui):
 
     def uvms_live_report(self, sec, count, sort="name",
                          node_names=[], report_type="overall"):
+        """
+        Print UVMs live report.
+        """
         if not sec or sec < 0:
             sec = 0
             count = 1
@@ -1265,7 +1268,7 @@ class UiCli(Ui):
                                sort="name", node_names=[],
                                report_type="overall"):
         """
-        Print UVMs overall time range report.
+        Print UVMs time range report.
         """
         sec = self.time_validator(start_time, end_time, sec)
         if sec > -1:
@@ -1295,6 +1298,9 @@ class UiCli(Ui):
 
     def vg_live_report(self, sec, count, sort="name",
                        report_type="overall"):
+        """
+        Print VGs time range report.
+        """
         if not sec or sec < 0:
             sec = 0
             count = 1
@@ -1309,6 +1315,24 @@ class UiCli(Ui):
                 entity_list = self.vg_reporter.overall_live_report(sort)
                 self._report_format_printer(
                     VG_OVERALL_REPORT_CLI_FIELDS, entity_list, time_now)
+            else:
+                parser.print_usage()
+                sys.stderr.write(
+                    "ERROR: Report type \"{}\" not implmented for VGs.\n"
+                    .format(report_type))
+                return False
+
+    def vg_time_range_report(self, start_time, end_time, sec=None,
+                             sort="name", node_names=[],
+                             report_type="overall"):
+        """
+        Print VGs time range report.
+        """
+        parser.print_usage()
+        sys.stderr.write(
+            "ERROR: Time range report not implmented for VGs.\n"
+            .format(report_type))
+        return False
 
 
 class UiInteractive(Ui):
@@ -1973,9 +1997,17 @@ if __name__ == "__main__":
         elif args.volume_groups:
             try:
                 ui_cli = UiCli()
-                ui_cli.vg_live_report(args.sec,
-                                      args.count,
-                                      args.sort)
+                if not args.start_time and not args.end_time:
+                    ui_cli.vg_live_report(args.sec,
+                                          args.count,
+                                          args.sort)
+                else:
+                    ui_cli.vg_time_range_report(args.start_time,
+                                                args.end_time,
+                                                args.sec,
+                                                args.sort,
+                                                args.node_name,
+                                                report_type=args.report_type)
             except KeyboardInterrupt:
                 print("Zort!")
                 exit(0)
