@@ -267,7 +267,7 @@ VM_OVERALL_REPORT_ARITHMOS_FIELDS = (
         "memory_usage_ppm", "hypervisor_num_iops",
         "controller_num_iops",
         "controller_io_bandwidth_kBps",
-        "controller_avg_io_latency_usecs"
+        "controller_avg_io_latency_usecs",
     ]
 )
 
@@ -339,6 +339,8 @@ VG_OVERALL_REPORT_ARITHMOS_FIELDS = (
         "volume_group_name", "id",
         "num_virtual_disks",
         "controller_num_iops",
+        "controller_num_read_iops",
+        "controller_num_write_iops",
         "controller_io_bandwidth_kBps",
         "controller_avg_io_latency_usecs"
     ]
@@ -350,13 +352,16 @@ VG_OVERALL_REPORT_CLI_FIELDS = (
             "width": 30, "align": "<", "format": ".30"},
         {"key": "num_virtual_disks", "header": "vDiks",
             "width": 8, "align": ">", "format": ".2f"},
-        {"key": "controller_num_iops", "header": "cIOPS",
+        {"key": "controller_num_iops", "header": "IOPS",
+            "width": 8, "align": ">", "format": ".2f"},
+        {"key": "controller_num_read_iops", "header": "RIOPS",
+            "width": 8, "align": ">", "format": ".2f"},
+        {"key": "controller_num_write_iops", "header": "WIOPS",
             "width": 8, "align": ">", "format": ".2f"},
         {"key": "controller_io_bandwidth_mBps",
             "header": "cB/W[MB]", "width": 8, "align": ">", "format": ".2f"},
         {"key": "controller_avg_io_latency_msecs",
             "header": "cLAT[ms]", "width": 8, "align": ">", "format": ".2f"}
-
     ]
 )
 
@@ -963,14 +968,16 @@ class VgReporter(Reporter):
             "name": "volume_group_name",
             "iops": "controller_num_iops",
             "bw": "controller_io_bandwidth_mBps",
-            "lat": "controller_avg_io_latency_msecs"
+            "lat": "controller_avg_io_latency_msecs",
+            "vdisks": "num_virtual_disks"
         }
 
         self.sort_conversion_arithmos = {
             "name": "volume_group_name",
             "iops": "-controller_num_iops",
             "bw": "-controller_io_bandwidth_kBps",
-            "lat": "-controller_avg_io_latency_usecs"
+            "lat": "-controller_avg_io_latency_usecs",
+            "vdisks": "-num_virtual_disks"
         }
 
     def _get_vg_live_stats(self, sort_criteria=None, filter_criteria=None,
@@ -1473,6 +1480,8 @@ class UiInteractive(Ui):
             return "bw"
         if sort_key == ord('l'):
             return "lat"
+        if sort_key == ord('d'):
+            return "vdisks"
         return self.vg_sort
 
     def toggle_nodes_pad(self, toggle_key):
@@ -1928,7 +1937,7 @@ if __name__ == "__main__":
                             help="Volume Groups activity report")
         parser.add_argument('--sort', '-s',
                             choices=["name", "cpu", "rdy", "mem",
-                                     "iops", "bw", "lat"],
+                                     "iops", "bw", "lat", "vdisks"],
                             default="name", help="Sort output")
         parser.add_argument('--report-type', '-t',
                             choices=["iops", "bw", "lat"],
