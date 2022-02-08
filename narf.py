@@ -435,6 +435,10 @@ class Reporter(object):
                     new_key = key.replace("kBps", "mBps")
                     new_value = entity[key] / 1024
                     converted_entity[new_key] = new_value
+                elif "bytes" in key:
+                    new_key = key.replace("bytes", "Mbytes")
+                    new_value = entity[key] / 1048576
+                    converted_entity[new_key] = new_value
                 elif "usecs" in key:
                     new_key = key.replace("usecs", "msecs")
                     new_value = entity[key] / 1000
