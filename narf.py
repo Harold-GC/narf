@@ -349,7 +349,7 @@ VG_OVERALL_REPORT_ARITHMOS_FIELDS = (
 VG_OVERALL_REPORT_CLI_FIELDS = (
     [
         {"key": "volume_group_name", "header": "VG name",
-            "width": 30, "align": "<", "format": ".30"},
+            "width": 29, "align": "<", "format": ".29"},
         {"key": "num_virtual_disks", "header": "vDiks",
             "width": 8, "align": ">", "format": ".2f"},
         {"key": "controller_num_iops", "header": "IOPS",
@@ -1354,10 +1354,15 @@ class UiInteractive(Ui):
         TODO:
           + Find a better way to get Y for pads, the use of overall_live_report()
             is an unnecessary call to arithmos.
+          + It's not necessary to set the size here. Now it's set dynamically in 
+            the formater function.
         """
         Ui.__init__(self)
 
         self.stdscr = curses.initscr()
+
+        self.help_widget_pad = curses.newpad(14, 30)
+        self.help_widget_pad.border()
 
         self.nodes_cpu_pad = curses.newpad(
             len(self.node_reporter.overall_live_report()) + 3, 87)
@@ -1380,6 +1385,7 @@ class UiInteractive(Ui):
         self.vg_sort = "name"
         self.nodes_pad = "cpu"
         self.entities_pad_to_display = "vm"
+        self.help_pad_to_display = "none"
         self.nodes = []
         self.active_node = None
         self.height = 0
@@ -1511,6 +1517,13 @@ class UiInteractive(Ui):
         elif toggle_key == ord('v'):
             self.entities_pad_to_display = "vm"
 
+    def toggle_help_pad(self, toggle_key):
+        if toggle_key == ord('h'):
+            if self.help_pad_to_display == "none":
+                self.help_pad_to_display = "widget"
+            else:
+                self.help_pad_to_display = "none"
+
     def handle_key_press(self):
         self.key = self.stdscr.getch()
         self.nodes_sort = self.get_nodes_sort_label(self.key)
@@ -1519,6 +1532,7 @@ class UiInteractive(Ui):
         self.toggle_nodes_pad(self.key)
         self.toggle_active_node(self.key)
         self.toggle_entities_pad(self.key)
+        self.toggle_help_pad(self.key)
 
     def render_header(self):
         # Turning on attributes for title
@@ -1533,6 +1547,28 @@ class UiInteractive(Ui):
         # Turning off attributes for title
         self.stdscr.attroff(curses.color_pair(self.RED))
         self.stdscr.attroff(curses.A_BOLD)
+
+    def render_help_pad(self, y, x):
+        self.stdscr.noutrefresh()
+        pad_size_y, pad_size_x = self.help_widget_pad.getmaxyx()
+
+        self.help_widget_pad.attron(curses.A_BOLD)
+        self.help_widget_pad.addstr(0, 3, " Hotkeys ")
+        self.help_widget_pad.attroff(curses.A_BOLD)
+
+        self.help_widget_pad.addstr(1,  1, "~~~ PADs ~~~~~~~~~~~~~~~~~~~")
+        self.help_widget_pad.addstr(2,  1, "n:   Toggle node pad")
+        self.help_widget_pad.addstr(3,  1, "v:   Virtual machines pad")
+        self.help_widget_pad.addstr(4,  1, "g:   Volume group pad")
+        self.help_widget_pad.addstr(5,  1, "TAB: Filter VMs by nodes")
+        self.help_widget_pad.addstr(7,  1, "~~~ Sort ~~~~~~~~~~~~~~~~~~~")
+        self.help_widget_pad.addstr(8,  1, "VM/VG: (c)pu, (r)dy , (m)em")
+        self.help_widget_pad.addstr(9,  1, "       (i)ops, (b)/w, (l)at")
+        self.help_widget_pad.addstr(10,  1, "Nodes: (N)ame, (C)pu, (I)OPS")
+        self.help_widget_pad.addstr(11, 1, "       (B)/W, (L)AT")
+
+        self.safe_noautorefresh(self.help_widget_pad, 0, 0, y, x,
+                                pad_size_y, pad_size_x)
 
     def render_nodes_cpu_pad(self, y, x):
         self.stdscr.noutrefresh()
@@ -1769,6 +1805,10 @@ class UiInteractive(Ui):
                 self.stdscr.border()
 
                 self.render_header()
+
+                # Display help pad
+                if self.help_pad_to_display == "widget":
+                    self.render_help_pad(2, 88)
 
                 # Display nodes pad
                 if current_y_position < self.height:
