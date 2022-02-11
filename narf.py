@@ -274,7 +274,7 @@ VM_OVERALL_REPORT_ARITHMOS_FIELDS = (
 VM_OVERALL_REPORT_CLI_FIELDS = (
     [
         {"key": "vm_name", "header": "VM Name",
-            "width": 20, "align": "<", "format": ".20"},
+            "width": 26, "align": "<", "format": ".20"},
         {"key": "hypervisor_cpu_usage_percent", "header": "CPU%",
             "width": 6, "align": ">", "format": ".2f"},
         {"key": "hypervisor.cpu_ready_time_percent", "header": "RDY%",
@@ -309,7 +309,7 @@ VM_IOPS_REPORT_ARITHMOS_FIELDS = (
 VM_IOPS_REPORT_CLI_FIELDS = (
     [
         {"key": "vm_name", "header": "Node",
-            "width": 20, "align": "<", "format": ".20"},
+            "width": 26, "align": "<", "format": ".20"},
         {"key": "hypervisor_cpu_usage_percent", "header": "CPU%",
             "width": 6, "align": ">", "format": ".2f"},
         {"key": "memory_usage_percent", "header": "MEM%",
@@ -1661,7 +1661,11 @@ class UiInteractive(Ui):
                                 pad_size_y, pad_size_x)
         return y + pad_size_y
 
-    def _render_entity_list(self, y, x, field_list, entity_list, title, title_sort):
+    def _render_entity_list(self, y, x, field_list, entity_list,
+                            title, title_sort, highlight_header=False):
+        """
+        Helper method to print entities lists.
+        """
         header_format_string = ""
         entity_format_string = ""
         for i in range(len(field_list)):
@@ -1697,11 +1701,17 @@ class UiInteractive(Ui):
 
         self.entities_pad.addstr(0, pad_size_x - 15, title_sort)
 
+        # Print header
+        if highlight_header:
+            self.entities_pad.attron(curses.color_pair(self.BLACK_WHITE))
         self.entities_pad.attron(curses.A_BOLD)
         self.entities_pad.addstr(
             1, 2, header_format_string.format(*header_list))
         self.entities_pad.attroff(curses.A_BOLD)
+        if highlight_header:
+            self.entities_pad.attroff(curses.color_pair(self.BLACK_WHITE))
 
+        # Print entities list
         for line_num in range(0, len(entity_list)):
             entity = entity_list[line_num]
             entity_stat_list = []
@@ -1720,69 +1730,23 @@ class UiInteractive(Ui):
 
         vgs = self.vg_reporter.overall_live_report(self.vg_sort)
 
-        self._render_entity_list(
+        return self._render_entity_list(
             y, x, VG_OVERALL_REPORT_CLI_FIELDS, vgs, "Volume Groups",
             " Sort: {0:<4} ".format(self.vg_sort))
 
-    def render_vm_pad(self, y, x):
-        self.stdscr.noutrefresh()
-        self.entities_pad.clear()
-
+    def render_vm_list(self, y, x):
         if self.active_node:
             vms = self.vm_reporter.overall_live_report(
                 self.vm_sort, [self.active_node])
+            highlight_header = True
         else:
             vms = self.vm_reporter.overall_live_report(
                 self.vm_sort)
-        self.entities_pad = curses.newpad(len(vms) + 3, 87)
-        self.entities_pad.border()
+            highlight_header = False
 
-        pad_size_y, pad_size_x = self.entities_pad.getmaxyx()
-
-        self.entities_pad.attron(curses.A_BOLD)
-        self.entities_pad.addstr(0, 3, " Virtual Machines ")
-        self.entities_pad.attroff(curses.A_BOLD)
-
-        self.entities_pad.addstr(0, pad_size_x - 15, " Sort: {0:<4} "
-                                 .format(self.vm_sort))
-
-        if self.active_node:
-            self.entities_pad.attron(curses.color_pair(self.BLACK_WHITE))
-        self.entities_pad.attron(curses.A_BOLD)
-        self.entities_pad.addstr(1, 1,
-                                 " {vm_name:<30} {cpu:>6} {rdy:>6} {mem:>6} {ciops:>6} "
-                                 "{hiops:>6} {bw:>8} {lat:>8}".format(
-                                     vm_name="VM Name",
-                                     cpu="CPU%",
-                                     rdy="RDY%",
-                                     mem="MEM%",
-                                     ciops="cIOPs",
-                                     hiops="hIOPs",
-                                     iops="IOPs",
-                                     bw="B/W[MB]",
-                                     lat="LAT[ms]"))
-
-        self.entities_pad.attroff(curses.A_BOLD)
-        if self.active_node:
-            self.entities_pad.attroff(curses.color_pair(self.BLACK_WHITE))
-
-        for i in range(0, len(vms)):
-            vm = vms[i]
-
-            self.entities_pad.addstr(i + 2, 1,
-                                     " {vm_name:<30} "
-                                     "{v[hypervisor_cpu_usage_percent]:>6.2f} "
-                                     "{v[hypervisor.cpu_ready_time_percent]:>6.2f} "
-                                     "{v[memory_usage_percent]:>6.2f} "
-                                     "{v[controller_num_iops]:>6} "
-                                     "{v[hypervisor_num_iops]:>6} "
-                                     "{v[controller_io_bandwidth_mBps]:>8.2f} "
-                                     "{v[controller_avg_io_latency_msecs]:>8.2f} "
-                                     .format(v=vm, vm_name=vm["vm_name"][:30]))
-
-        self.safe_noautorefresh(self.entities_pad, 0, 0, y, x,
-                                pad_size_y, pad_size_x)
-        return y + pad_size_y
+        return self._render_entity_list(
+            y, x, VM_OVERALL_REPORT_CLI_FIELDS, vms, "Virtual Machines",
+            " Sort: {0:<4} ".format(self.vm_sort), highlight_header)
 
     def render_main_screen(self, stdscr):
         self.stdscr.clear()
@@ -1822,7 +1786,7 @@ class UiInteractive(Ui):
                 # Display entities pad
                 if current_y_position < self.height - 2:
                     if self.entities_pad_to_display == "vm":
-                        current_y_position = self.render_vm_pad(
+                        current_y_position = self.render_vm_list(
                             current_y_position, 1)
                     elif self.entities_pad_to_display == "vg":
                         current_y_position = self.render_vg_list(
