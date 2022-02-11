@@ -1870,7 +1870,6 @@ class UiExporter(Ui):
                               "memoryUsagePercent={v[memory_usage_percent]:.2f},"
                               "controllerNumIops={v[controller_num_iops]:.0f},"
                               "hypervisorNumIops={v[hypervisor_num_iops]:.0f},"
-                              "numIops={v[num_iops]:.0f},"
                               "controllerIoBandwidth_MBps={v[controller_io_bandwidth_mBps]:.2f},"
                               "controllerAvgIoLatency_msecs={v[controller_avg_io_latency_msecs]:.2f} "
                               "{time_usec}\n"
