@@ -1626,8 +1626,10 @@ class UiInteractive(Ui):
 
         self.nodes_io_pad.attron(curses.A_BOLD)
 
-        self.nodes_io_pad.addstr(1, 1, "{0:<20} {1:>8} {2:>8} {3:>8} {4:>8} {5:>6}"
+        self.nodes_io_pad.addstr(1, 1, "{0:<20} {1:>6} {2:>6} {3:>8} {4:>8} {5:>8} {6:>8} {7:>6}"
                                  .format("Name",
+                                         "MEM%",
+                                         "CPU%",
                                          "cIOPs",
                                          "hIOPs",
                                          "IOPs",
@@ -1644,9 +1646,11 @@ class UiInteractive(Ui):
                 self.nodes_io_pad.attron(curses.color_pair(self.BLACK_WHITE))
                 self.nodes_io_pad.attron(curses.A_BOLD)
 
-            self.nodes_io_pad.addstr(i + 2, 1, "{0:<20} {1:>8} {2:>8} "
-                                     "{3:>8} {4:>8.2f} {5:>6.2f}"
+            self.nodes_io_pad.addstr(i + 2, 1, "{0:<20} {1:>6.2f} {2:>6.2f} {3:>8} {4:>8} "
+                                     "{5:>8} {6:>8.2f} {7:>6.2f}"
                                      .format(node["node_name"][:20],
+                                             node["hypervisor_memory_usage_percent"],
+                                             node["hypervisor_cpu_usage_percent"],
                                              node["controller_num_iops"],
                                              node["hypervisor_num_iops"],
                                              node["num_iops"],
