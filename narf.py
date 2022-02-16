@@ -1361,7 +1361,7 @@ class UiInteractive(Ui):
 
         self.stdscr = curses.initscr()
 
-        self.help_widget_pad = curses.newpad(14, 30)
+        self.help_widget_pad = curses.newpad(15, 30)
         self.help_widget_pad.border()
 
         self.nodes_cpu_pad = curses.newpad(
@@ -1564,8 +1564,9 @@ class UiInteractive(Ui):
         self.help_widget_pad.addstr(7,  1, "~~~ Sort ~~~~~~~~~~~~~~~~~~~")
         self.help_widget_pad.addstr(8,  1, "VM/VG: (c)pu, (r)dy , (m)em")
         self.help_widget_pad.addstr(9,  1, "       (i)ops, (b)/w, (l)at")
-        self.help_widget_pad.addstr(10,  1, "Nodes: (N)ame, (C)pu, (I)OPS")
-        self.help_widget_pad.addstr(11, 1, "       (B)/W, (L)AT")
+        self.help_widget_pad.addstr(10,  1, "       (d)isks")
+        self.help_widget_pad.addstr(11,  1, "Nodes: (N)ame, (C)pu, (I)OPS")
+        self.help_widget_pad.addstr(12, 1, "       (B)/W, (L)AT")
 
         self.safe_noautorefresh(self.help_widget_pad, 0, 0, y, x,
                                 pad_size_y, pad_size_x)
