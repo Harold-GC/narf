@@ -840,7 +840,7 @@ class VmReporter(Reporter):
         for vm_entity in entity_list:
             vm_dict = self._get_entity_stats_from_proto(vm_entity, field_list)
             vm_dict["id"] = vm_entity.id
-            vm_dict["vm_name"] = str(vm_entity.vm_name)
+            vm_dict["vm_name"] = vm_entity.vm_name.encode('utf-8')
             vm_stats_dic.append(vm_dict)
         return vm_stats_dic
 
@@ -859,7 +859,7 @@ class VmReporter(Reporter):
                     sampling_interval
                 )
                 vm[field] = value
-            vm["vm_name"] = str(vm_pivot.vm_name)
+            vm["vm_name"] = vm_pivot.vm_name.encode('utf-8')
             vm["id"] = vm_pivot.id
             vm_stats_dic.append(vm)
         return vm_stats_dic
@@ -997,6 +997,8 @@ class VgReporter(Reporter):
         for vg_entity in entity_list:
             vg_dict = self._get_entity_stats_from_proto(vg_entity, field_list)
             vg_dict["id"] = vg_entity.id
+            vg_dict["volume_group_name"] = vg_dict["volume_group_name"].encode(
+                'utf-8')
             vg_stats_dic.append(vg_dict)
         return vg_stats_dic
 
@@ -1015,7 +1017,8 @@ class VgReporter(Reporter):
                     sampling_interval
                 )
                 vg[field] = value
-            vg["volume_group_name"] = str(vg_pivot.volume_group_name)
+            vg["volume_group_name"] = vg_pivot.volume_group_name.encode(
+                'utf-8')
             vg["id"] = vg_pivot.id
             vg_stats_dic.append(vg)
         return vg_stats_dic
