@@ -233,7 +233,6 @@ NODES_LATENCY_REPORT_CLI_FIELDS = (
             "width": 6, "align": ">", "format": ".2f"},
         {"key": "hypervisor_memory_usage_percent", "header": "MEM%",
             "width": 6, "align": ">", "format": ".2f"},
-
         {"key": "hypervisor_avg_io_latency_msecs",
             "header": "hLAT[ms]", "width": 9, "align": ">", "format": ".2f"},
         {"key": "hypervisor_avg_read_io_latency_msecs",
@@ -261,7 +260,7 @@ NODES_LATENCY_REPORT_CLI_FIELDS = (
 # Definition of VM reports.
 VM_OVERALL_REPORT_ARITHMOS_FIELDS = (
     [
-        "vm_name", "id", "node_name",
+        "vm_name", "id", "node_name", "node_id",
         "hypervisor_cpu_usage_ppm",
         "hypervisor.cpu_ready_time_ppm",
         "memory_usage_ppm", "hypervisor_num_iops",
@@ -881,63 +880,95 @@ class VmReporter(Reporter):
         else:
             sort_by_arithmos = self.sort_conversion_arithmos[default_sort_field]
 
-    def _get_arithmos_filter_criteria_live(self, node_names=[], power_on=True):
-        """
-        Currently only filter criteria for VM is nodes and power state.
-        Power state on is used for live reports, while power state off is used
-        for time range reports.
-        """
-        filter_by = ""
+    def _get_arithmos_filter_criteria_string(self, node_names=[],
+                                             node_ids=[], power_on=True):
+        """Return a valid filter_criteria string for Arithmos."""
+        filter_criteria = []
+
         if power_on:
-            filter_by = "power_state==on"
+            filter_criteria.append("power_state==on")
+
         if node_names:
             node_names_str = ",".join(["node_name==" + node_name
                                        for node_name in node_names])
-            if power_on:
-                filter_by += ";" + node_names_str
-            else:
-                filter_by += node_names_str
-        return filter_by
+            filter_criteria.append(node_names_str)
 
-    def overall_live_report(self, sort="name", node_names=[]):
-        """
-        Returns a sorted dictionary with VMs overall stats.
+        if node_ids:
+            node_ids_str = ",".join(["node_id==" + node_id
+                                     for node_id in node_ids])
+            filter_criteria.append(node_ids_str)
+
+        filter_str = ""
+
+        if len(filter_criteria) > 0:
+            for i in range(len(filter_criteria) - 1):
+                filter_str += filter_criteria[i] + ";"
+            filter_str += filter_criteria[-1]
+
+        return filter_str
+
+    def _live_report(self, field_list, sort="name",
+                     node_names=[], node_ids=[]):
+        """Return dictionary with VM live stats.
+
+        Args:
+            field_list (list): List of valid kVM arithmos stats.
+            sort (str): Criteria for sort entities.
+            node_names (list): List of nodes names for filter entities.
+            node_ids (list: List of node ids for filter entities.
+
+        Return:
+            Dictionary with VM entities and live stats as
+            specified by the field_list
         """
         sort_by_arithmos = self._get_arithmos_sort_field(sort)
-        filter_by = self._get_arithmos_filter_criteria_live(node_names)
+        filter_str = self._get_arithmos_filter_criteria_string(
+            node_names=node_names, node_ids=node_ids)
 
         entity_list = self._get_vm_live_stats(
-            field_list=VM_OVERALL_REPORT_ARITHMOS_FIELDS,
-            filter_criteria=filter_by,
+            field_list=field_list,
+            filter_criteria=filter_str,
             sort_criteria=sort_by_arithmos)
 
         ret = self._get_live_stats_dic(entity_list,
-                                       VM_OVERALL_REPORT_ARITHMOS_FIELDS)
+                                       field_list)
         ret = self._stats_unit_conversion(ret)
 
         return self._sort_entity_dict(ret, sort)
 
-    def iops_live_report(self, sort="name", node_names=[]):
+    def overall_live_report(self, sort="name", node_names=[], node_ids=[]):
+        """Return dictionary with VM overall stats.
+
+        Args:
+            sort (str): Criteria for sort entities.
+            node_names (list): List of nodes names for filter entities.
+            node_ids (list: List of node ids for filter entities.
+
+        Return:
+            Dictionary with VM entities and live stats as
+            specified by the field_list
         """
-        Returns a sorted dictionary with VMs IOPs stats.
+        return self._live_report(VM_OVERALL_REPORT_ARITHMOS_FIELDS,
+                                 sort, node_names, node_ids)
+
+    def iops_live_report(self, sort="name", node_names=[], node_ids=[]):
+        """Return dictionary with VM IOPS stats.
+
+        Args:
+            sort (str): Criteria for sort entities.
+            node_names (list): List of nodes names for filter entities.
+            node_ids (list: List of node ids for filter entities.
+
+        Return:
+            Dictionary with VM entities and live stats as
+            specified by the field_list
         """
-        sort_by_arithmos = self._get_arithmos_sort_field(sort)
-        filter_by = self._get_arithmos_filter_criteria_live(node_names)
-
-        entity_list = self._get_vm_live_stats(
-            field_list=VM_IOPS_REPORT_ARITHMOS_FIELDS,
-            filter_criteria=filter_by,
-            sort_criteria=sort_by_arithmos)
-
-        ret = self._get_live_stats_dic(entity_list,
-                                       VM_IOPS_REPORT_ARITHMOS_FIELDS)
-        ret = self._stats_unit_conversion(ret)
-
-        return self._sort_entity_dict(ret, sort)
+        return self._live_report(VM_IOPS_REPORT_ARITHMOS_FIELDS,
+                                 sort, node_names, node_ids)
 
     def overall_time_range_report(self, start, end, sort="name", node_names=[]):
         sort_by_arithmos = self._get_arithmos_sort_field(sort)
-        filter_by = self._get_arithmos_filter_criteria_live(
+        filter_by = self._get_arithmos_filter_criteria_string(
             node_names, power_on=False)
 
         vm_list = self._get_vm_live_stats(field_list=["vm_name", "id",
@@ -1505,13 +1536,13 @@ class UiInteractive(Ui):
             for i in range(0, len(self.nodes)):
                 node = self.nodes[i]
                 if not self.active_node:
-                    self.active_node = node["node_name"]
+                    self.active_node = node["id"]
                     return
-                elif i == len(self.nodes) - 1 and node["node_name"] == self.active_node:
+                elif i == len(self.nodes) - 1 and node["id"] == self.active_node:
                     self.active_node = None
                     return
-                elif node["node_name"] == self.active_node:
-                    self.active_node = self.nodes[i + 1]["node_name"]
+                elif node["id"] == self.active_node:
+                    self.active_node = self.nodes[i + 1]["id"]
                     return
 
     def toggle_entities_pad(self, toggle_key):
@@ -1600,7 +1631,7 @@ class UiInteractive(Ui):
             node = self.nodes[i]
             rangex = int(0.5 * node["hypervisor_cpu_usage_percent"])
 
-            if node["node_name"] == self.active_node:
+            if node["id"] == self.active_node:
                 self.nodes_cpu_pad.attron(curses.color_pair(self.BLACK_WHITE))
                 self.nodes_cpu_pad.attron(curses.A_BOLD)
 
@@ -1609,7 +1640,7 @@ class UiInteractive(Ui):
                                               node["hypervisor_memory_usage_percent"],
                                               node["hypervisor_cpu_usage_percent"],
                                               "#" * rangex))
-            if node["node_name"] == self.active_node:
+            if node["id"] == self.active_node:
                 self.nodes_cpu_pad.attroff(curses.color_pair(self.BLACK_WHITE))
                 self.nodes_cpu_pad.attroff(curses.A_BOLD)
 
@@ -1745,7 +1776,7 @@ class UiInteractive(Ui):
     def render_vm_list(self, y, x):
         if self.active_node:
             vms = self.vm_reporter.overall_live_report(
-                self.vm_sort, [self.active_node])
+                self.vm_sort, node_ids=[self.active_node])
             highlight_header = True
         else:
             vms = self.vm_reporter.overall_live_report(
