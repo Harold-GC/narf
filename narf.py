@@ -78,6 +78,20 @@ from serviceability.interface.analytics.arithmos_rpc_client import (
 
 # ========================================================================
 # Definition of Nodes reports.
+#
+# NODES_CVM_REPORTS_ATRITHMOS_FIELDS is used to complement node reports
+# with CVM information.
+#
+# NODES_*_REPORT_ARITHMOS_FIELDS define arithmos kNode fields for node reports.
+#
+
+NODES_CVM_REPORTS_ATRITHMOS_FIELDS = (
+    [
+        "id", "vm_name", "node_id", "hypervisor_cpu_usage_ppm",
+        "hypervisor.cpu_ready_time_ppm", "memory_usage_ppm"
+    ]
+)
+
 NODES_OVERALL_REPORT_ARITHMOS_FIELDS = (
     [
         "node_name", "id", "hypervisor_cpu_usage_ppm",
@@ -91,20 +105,26 @@ NODES_OVERALL_REPORT_CLI_FIELDS = (
     [
         {"key": "node_name", "header": "Node",
             "width": 20, "align": "<", "format": ".20"},
-        {"key": "hypervisor_cpu_usage_percent", "header": "CPU%",
-            "width": 6, "align": ">", "format": ".2f"},
-        {"key": "hypervisor_memory_usage_percent", "header": "MEM%",
-            "width": 6, "align": ">", "format": ".2f"},
+        {"key": "hypervisor_cpu_usage_percent", "header": "hypCPU%",
+            "width": 8, "align": ">", "format": ".2f"},
+        {"key": "hypervisor_memory_usage_percent", "header": "hypMEM%",
+            "width": 8, "align": ">", "format": ".2f"},
+        {"key": "cvm_hypervisor_cpu_usage_percent", "header": "cvmCPU%",
+            "width": 8, "align": ">", "format": ".2f"},
+        {"key": "cvm_hypervisor.cpu_ready_time_percent", "header": "cvmMEM%",
+            "width": 8, "align": ">", "format": ".2f"},
+        {"key": "cvm_memory_usage_percent", "header": "cvmRDY%",
+            "width": 8, "align": ">", "format": ".2f"},
         {"key": "hypervisor_num_iops", "header": "hIOPS",
             "width": 8, "align": ">", "format": ".2f"},
         {"key": "controller_num_iops", "header": "cIOPS",
             "width": 8, "align": ">", "format": ".2f"},
-        {"key": "num_iops", "header": "IOPS",
+        {"key": "num_iops", "header": "bIOPS",
             "width": 8, "align": ">", "format": ".2f"},
         {"key": "io_bandwidth_mBps",
-            "header": "B/W[MB]", "width": 8, "align": ">", "format": ".2f"},
+            "header": "bB/W[MB]", "width": 8, "align": ">", "format": ".2f"},
         {"key": "avg_io_latency_msecs",
-            "header": "LAT[ms]", "width": 8, "align": ">", "format": ".2f"}
+            "header": "bLAT[ms]", "width": 8, "align": ">", "format": ".2f"}
     ]
 )
 
@@ -128,10 +148,17 @@ NODES_IOPS_REPORT_CLI_FIELDS = (
     [
         {"key": "node_name", "header": "Node",
             "width": 20, "align": "<", "format": ".20"},
-        {"key": "hypervisor_cpu_usage_percent", "header": "CPU%",
+        {"key": "hypervisor_cpu_usage_percent", "header": "hCPU%",
             "width": 6, "align": ">", "format": ".2f"},
-        {"key": "hypervisor_memory_usage_percent", "header": "MEM%",
+        {"key": "hypervisor_memory_usage_percent", "header": "hMEM%",
             "width": 6, "align": ">", "format": ".2f"},
+        {"key": "cvm_hypervisor_cpu_usage_percent", "header": "cCPU%",
+            "width": 6, "align": ">", "format": ".2f"},
+        {"key": "cvm_hypervisor.cpu_ready_time_percent", "header": "cMEM%",
+            "width": 6, "align": ">", "format": ".2f"},
+        {"key": "cvm_memory_usage_percent", "header": "cRDY%",
+            "width": 6, "align": ">", "format": ".2f"},
+
 
         {"key": "hypervisor_num_iops", "header": "hIOPS",
             "width": 8, "align": ">", "format": ".2f"},
@@ -147,11 +174,11 @@ NODES_IOPS_REPORT_CLI_FIELDS = (
         {"key": "controller_num_write_iops", "header": "cWIOPS",
             "width": 8, "align": ">", "format": ".2f"},
 
-        {"key": "num_iops", "header": "IOPS",
+        {"key": "num_iops", "header": "bIOPS",
             "width": 8, "align": ">", "format": ".2f"},
-        {"key": "num_read_iops", "header": "RIOPS",
+        {"key": "num_read_iops", "header": "bRIOPS",
             "width": 8, "align": ">", "format": ".2f"},
-        {"key": "num_write_iops", "header": "WIOPS",
+        {"key": "num_write_iops", "header": "bWIOPS",
             "width": 8, "align": ">", "format": ".2f"}
     ]
 )
@@ -705,47 +732,76 @@ class NodeReporter(Reporter):
             nodes_stats_dic.append(node)
         return nodes_stats_dic
 
-    def overall_live_report(self, sort="name"):
+    def _get_cvm_stats(self, node_id, field_list=[]):
+        """Return CVM stats."""
+        vm_reporter = VmReporter()
+        filter_criteria = "node_id==" + node_id + ";is_cvm==1"
+
+        ret = vm_reporter._get_vm_live_stats(
+            filter_criteria=filter_criteria, field_list=field_list)
+        ret = vm_reporter._get_live_stats_dic(ret, field_list)
+        return ret[0]
+
+    def _inject_cvm_stats(self, nodes):
+        """Inject CVM stats into nodes dictionary."""
+        ret = []
+        for node in nodes:
+            cvm = self._get_cvm_stats(
+                node["id"], field_list=NODES_CVM_REPORTS_ATRITHMOS_FIELDS)
+
+            for cvm_stat in NODES_CVM_REPORTS_ATRITHMOS_FIELDS:
+                node["cvm_" + cvm_stat] = (
+                    cvm[cvm_stat])
+            ret.append(node)
+        return ret
+
+    def _live_report(self, field_list, sort="name"):
+        """Return dictionary with node live stats.
+        Args:
+            field_list (list): List of valid kNode arithmos stats.
+            sort (str): Criteria for sort entities.
+
+        Return:
+            Dictionary with Node entities and live stats as
+            specified by the field_list
         """
-        Returns a sorted dictionary with nodes overall stats.
-        """
+        # Get nodes and stats in arithmos proto format
         entity_list = self._get_node_live_stats(
-            field_name_list=NODES_OVERALL_REPORT_ARITHMOS_FIELDS,
+            field_name_list=field_list,
             filter_criteria="")
-        ret = self._get_live_stats_dic(entity_list,
-                                       NODES_OVERALL_REPORT_ARITHMOS_FIELDS)
+
+        # Convert arithmos proto into dictionary
+        ret = self._get_live_stats_dic(entity_list, field_list)
+
+        # Add CVMs stats into node list
+        ret = self._inject_cvm_stats(ret)
+
+        # Do unit conversion
         ret = self._stats_unit_conversion(ret)
         return self._sort_entity_dict(ret, sort)
 
-    def overall_time_range_report(self, start, end, sort="name", nodes=[]):
+    def overall_live_report(self, sort="name"):
+        """Returns dictionary with nodes overall stats.
+        Args:
+            field_list (list): List of valid kNode arithmos stats.
+            sort (str): Criteria for sort entities.
+
+        Return:
+            Dictionary with Node entities and live stats as
+            specified by the field_list
         """
-        Returns a sorted dictionary with time range nodes overall stats.
-        """
-        ret = self._get_time_range_stats_dic(
-            NODES_OVERALL_REPORT_ARITHMOS_FIELDS, start, end)
-        ret = self._stats_unit_conversion(ret)
-        return self._sort_entity_dict(ret, sort)
+        return self._live_report(NODES_OVERALL_REPORT_ARITHMOS_FIELDS, sort)
 
     def iops_live_report(self, sort="name"):
-        """
-        Returns a sorted dictionary with live nodes IOPS stats.
-        """
-        entity_list = self._get_node_live_stats(
-            field_name_list=NODES_IOPS_REPORT_ARITHMOS_FIELDS,
-            filter_criteria="")
-        ret = self._get_live_stats_dic(entity_list,
-                                       NODES_IOPS_REPORT_ARITHMOS_FIELDS)
-        ret = self._stats_unit_conversion(ret)
-        return self._sort_entity_dict(ret, sort)
+        """Returns a sorted dictionary with live nodes IOPS stats.
+        Args:
+            sort (str): Criteria for sort entities.
 
-    def iops_time_range_report(self, start, end, sort="name", nodes=[]):
+        Return:
+            Dictionary with Node entities and live stats as
+            specified by the field_list
         """
-        Returns a sorted dictionary with time range node IOPS stats.
-        """
-        ret = self._get_time_range_stats_dic(
-            NODES_IOPS_REPORT_ARITHMOS_FIELDS, start, end)
-        ret = self._stats_unit_conversion(ret)
-        return self._sort_entity_dict(ret, sort)
+        return self._live_report(NODES_IOPS_REPORT_ARITHMOS_FIELDS, sort)
 
     def bw_live_report(self, sort="name"):
         """
@@ -759,15 +815,6 @@ class NodeReporter(Reporter):
         ret = self._stats_unit_conversion(ret)
         return self._sort_entity_dict(ret, sort)
 
-    def bw_time_range_report(self, start, end, sort="name", nodes=[]):
-        """
-        Returns a sorted dictionary with time range nodes bandwidth stats.
-        """
-        ret = self._get_time_range_stats_dic(
-            NODES_BANDWIDTH_REPORT_ARITHMOS_FIELDS, start, end)
-        ret = self._stats_unit_conversion(ret)
-        return self._sort_entity_dict(ret, sort)
-
     def lat_live_report(self, sort="name"):
         """
         Returns a sorted dictionary with live nodes bandwidth stats.
@@ -777,6 +824,33 @@ class NodeReporter(Reporter):
             filter_criteria="")
         ret = self._get_live_stats_dic(entity_list,
                                        NODES_LATENCY_REPORT_ARITHMOS_FIELDS)
+        ret = self._stats_unit_conversion(ret)
+        return self._sort_entity_dict(ret, sort)
+
+    def overall_time_range_report(self, start, end, sort="name", nodes=[]):
+        """
+        Returns a sorted dictionary with time range nodes overall stats.
+        """
+        ret = self._get_time_range_stats_dic(
+            NODES_OVERALL_REPORT_ARITHMOS_FIELDS, start, end)
+        ret = self._stats_unit_conversion(ret)
+        return self._sort_entity_dict(ret, sort)
+
+    def iops_time_range_report(self, start, end, sort="name", nodes=[]):
+        """
+        Returns a sorted dictionary with time range node IOPS stats.
+        """
+        ret = self._get_time_range_stats_dic(
+            NODES_IOPS_REPORT_ARITHMOS_FIELDS, start, end)
+        ret = self._stats_unit_conversion(ret)
+        return self._sort_entity_dict(ret, sort)
+
+    def bw_time_range_report(self, start, end, sort="name", nodes=[]):
+        """
+        Returns a sorted dictionary with time range nodes bandwidth stats.
+        """
+        ret = self._get_time_range_stats_dic(
+            NODES_BANDWIDTH_REPORT_ARITHMOS_FIELDS, start, end)
         ret = self._stats_unit_conversion(ret)
         return self._sort_entity_dict(ret, sort)
 
@@ -1388,7 +1462,7 @@ class UiInteractive(Ui):
         TODO:
           + Find a better way to get Y for pads, the use of overall_live_report()
             is an unnecessary call to arithmos.
-          + It's not necessary to set the size here. Now it's set dynamically in 
+          + It's not necessary to set the size here. Now it's set dynamically in
             the formater function.
         """
         Ui.__init__(self)
