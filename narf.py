@@ -1838,7 +1838,7 @@ class UiInteractive(Ui):
         for i in range(0, len(self.nodes)):
             node = self.nodes[i]
 
-            if node["node_name"] == self.active_node:
+            if node["id"] == self.active_node:
                 self.nodes_io_pad.attron(curses.color_pair(self.BLACK_WHITE))
                 self.nodes_io_pad.attron(curses.A_BOLD)
 
@@ -1853,7 +1853,7 @@ class UiInteractive(Ui):
                                              node["io_bandwidth_mBps"],
                                              node["avg_io_latency_msecs"]))
 
-            if node["node_name"] == self.active_node:
+            if node["id"] == self.active_node:
                 self.nodes_io_pad.attroff(curses.color_pair(self.BLACK_WHITE))
                 self.nodes_io_pad.attroff(curses.A_BOLD)
 
