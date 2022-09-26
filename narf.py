@@ -785,25 +785,6 @@ class NodeReporter(Reporter):
             node_stats_dic.append(node_dict)
         return node_stats_dic
 
-    def _get_time_range_stats_dic(self, field_list, start, end, sampling_interval=30):
-        """
-        Get a list of fields (stats), a time frame specified by start and end,
-        the desired interval and collects from arithmos the average values.
-        """
-        nodes_stats_dic = []
-        for node_pivot in self.nodes:
-            node = {}
-            for field in field_list:
-                value = self._get_time_range_stat_average(
-                    node_pivot.id, field, start, end,
-                    sampling_interval
-                )
-                node[field] = value
-            node["node_name"] = str(node_pivot.node_name)
-            node["node_id"] = int(node_pivot.id)
-            nodes_stats_dic.append(node)
-        return nodes_stats_dic
-
     def _get_cvm_live_stats(self, node_id, field_list=[]):
         """Return CVM stats."""
         vm_reporter = VmReporter()
@@ -868,41 +849,88 @@ class NodeReporter(Reporter):
         """
         return self._live_report(NODES_LATENCY_REPORT_ARITHMOS_FIELDS, sort)
 
-    def overall_time_range_report(self, start, end, sort="name", nodes=[]):
+    def _get_time_range_stats_dic(self, field_list, start, end, sampling_interval=30):
         """
-        Returns a sorted dictionary with time range nodes overall stats.
+        Get a list of fields (stats), a time frame specified by start and end,
+        the desired interval and collects from arithmos the average values.
         """
-        ret = self._get_time_range_stats_dic(
-            NODES_OVERALL_REPORT_ARITHMOS_FIELDS, start, end)
+        nodes_stats_dic = []
+        for node_pivot in self.nodes:
+            node = {}
+            for field in field_list:
+                value = self._get_time_range_stat_average(
+                    node_pivot.id, field, start, end,
+                    sampling_interval
+                )
+                node[field] = value
+            node["node_name"] = str(node_pivot.node_name)
+            node["node_id"] = int(node_pivot.id)
+            nodes_stats_dic.append(node)
+        return nodes_stats_dic
+
+    def _get_cvm_time_range_stats(self, node_id, field_list, start, end):
+        """Return CVM time range stats."""
+        vm_reporter = VmReporter()
+        filter_by = "node_id==" + str(node_id) + ";is_cvm==1"
+
+        vm_list = vm_reporter._get_vm_live_stats(field_list=["vm_name", "id",
+                                                             "node_name"],
+                                                 filter_criteria=filter_by)
+        ret = vm_reporter._get_time_range_stats_dic(
+            vm_list, field_list, start, end)
+        return ret[0]
+
+    def _inject_cvm_time_range_stats(self, nodes, start, end):
+        """Inject CVM stats into nodes dictionary."""
+        ret = []
+        for node in nodes:
+            cvm = self._get_cvm_time_range_stats(
+                node["node_id"], NODES_CVM_REPORTS_ATRITHMOS_FIELDS,
+                start, end)
+            for cvm_stat in NODES_CVM_REPORTS_ATRITHMOS_FIELDS:
+                node["cvm_" + cvm_stat] = (
+                    cvm[cvm_stat])
+            ret.append(node)
+        return ret
+
+    def _time_range_report(self, field_list, start, end, sort="name"):
+        """Return dictionary with node live stats."""
+        # Get nodes and stats in arithmos proto format
+        entity_list = self._get_time_range_stats_dic(field_list, start, end)
+
+        # Add CVMs stats into node list
+        ret = self._inject_cvm_time_range_stats(entity_list, start, end)
+
+        # Do unit conversion
         ret = self._stats_unit_conversion(ret)
+
         return self._sort_entity_dict(ret, sort)
+
+    def overall_time_range_report(self, start, end, sort="name", nodes=[]):
+        """Returns dictionary with time range nodes overall stats."""
+        return self._time_range_report(NODES_OVERALL_REPORT_ARITHMOS_FIELDS,
+                                       start, end, sort)
 
     def iops_time_range_report(self, start, end, sort="name", nodes=[]):
         """
         Returns a sorted dictionary with time range node IOPS stats.
         """
-        ret = self._get_time_range_stats_dic(
-            NODES_IOPS_REPORT_ARITHMOS_FIELDS, start, end)
-        ret = self._stats_unit_conversion(ret)
-        return self._sort_entity_dict(ret, sort)
+        return self._time_range_report(NODES_IOPS_REPORT_ARITHMOS_FIELDS,
+                                       start, end, sort)
 
     def bw_time_range_report(self, start, end, sort="name", nodes=[]):
         """
         Returns a sorted dictionary with time range nodes bandwidth stats.
         """
-        ret = self._get_time_range_stats_dic(
-            NODES_BANDWIDTH_REPORT_ARITHMOS_FIELDS, start, end)
-        ret = self._stats_unit_conversion(ret)
-        return self._sort_entity_dict(ret, sort)
+        return self._time_range_report(NODES_BANDWIDTH_REPORT_ARITHMOS_FIELDS,
+                                       start, end, sort)
 
     def lat_time_range_report(self, start, end, sort="name", nodes=[]):
         """
         Returns a sorted dictionary with time range nodes bandwidth stats.
         """
-        ret = self._get_time_range_stats_dic(
-            NODES_LATENCY_REPORT_ARITHMOS_FIELDS, start, end)
-        ret = self._stats_unit_conversion(ret)
-        return self._sort_entity_dict(ret, sort)
+        return self._time_range_report(NODES_LATENCY_REPORT_ARITHMOS_FIELDS,
+                                       start, end, sort)
 
 
 class VmReporter(Reporter):
@@ -1024,18 +1052,7 @@ class VmReporter(Reporter):
 
     def _live_report(self, field_list, sort="name",
                      node_names=[], node_ids=[]):
-        """Return dictionary with VM live stats.
-
-        Args:
-            field_list (list): List of valid kVM arithmos stats.
-            sort (str): Criteria for sort entities.
-            node_names (list): List of nodes names for filter entities.
-            node_ids (list: List of node ids for filter entities.
-
-        Return:
-            Dictionary with VM entities and live stats as
-            specified by the field_list
-        """
+        """Return dictionary with VM live stats."""
         sort_by_arithmos = self._get_arithmos_sort_field(sort)
         filter_str = self._get_arithmos_filter_criteria_string(
             node_names=node_names, node_ids=node_ids)
@@ -1081,7 +1098,25 @@ class VmReporter(Reporter):
         return self._live_report(VM_IOPS_REPORT_ARITHMOS_FIELDS,
                                  sort, node_names, node_ids)
 
+    def _get_vm_time_range_stats(self):
+        pass
+
     def _time_range_report(self, start, end, field_list, sort="name", node_names=[]):
+        # sort_by_arithmos = self._get_arithmos_sort_field(sort)
+        # filter_by = self._get_arithmos_filter_criteria_string(
+        #     node_names, power_on=False)
+        #
+        # vm_list = self._get_vm_live_stats(field_list=["vm_name", "id",
+        #                                               "node_name"],
+        #                                   filter_criteria=filter_by,
+        #                                   sort_criteria=sort_by_arithmos)
+        #
+        # generic_attribute_names = ["node_name"]
+        # ret = self._get_time_range_stats_dic(vm_list, VM_OVERALL_REPORT_ARITHMOS_FIELDS,
+        #                                      start, end)
+        # ret = self._stats_unit_conversion(ret)
+        #
+        # return self._sort_entity_dict(ret, sort)
         pass
 
     def overall_time_range_report(self, start, end, sort="name", node_names=[]):
