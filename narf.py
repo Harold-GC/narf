@@ -265,31 +265,37 @@ NODES_BANDWIDTH_REPORT_CLI_FIELDS = (
     [
         {"key": "node_name", "header": "Node",
             "width": 20, "align": "<", "format": ".20"},
-        {"key": "hypervisor_cpu_usage_percent", "header": "CPU%",
+        {"key": "hypervisor_cpu_usage_percent", "header": "hCPU%",
             "width": 6, "align": ">", "format": ".2f"},
-        {"key": "hypervisor_memory_usage_percent", "header": "MEM%",
+        {"key": "hypervisor_memory_usage_percent", "header": "hMEM%",
+            "width": 6, "align": ">", "format": ".2f"},
+        {"key": "cvm_hypervisor_cpu_usage_percent", "header": "cCPU%",
+            "width": 6, "align": ">", "format": ".2f"},
+        {"key": "cvm_hypervisor.cpu_ready_time_percent", "header": "cRDY%",
+            "width": 6, "align": ">", "format": ".2f"},
+        {"key": "cvm_memory_usage_percent", "header": "cMEM%",
             "width": 6, "align": ">", "format": ".2f"},
 
         {"key": "hypervisor_io_bandwidth_mBps",
-            "header": "hB/W[MB]", "width": 8, "align": ">", "format": ".2f"},
+            "header": "hB/W[MB]", "width": 9, "align": ">", "format": ".2f"},
         {"key": "hypervisor_read_io_bandwidth_mBps",
-            "header": "hRB/W[MB]", "width": 8, "align": ">", "format": ".2f"},
+            "header": "hRB/W[MB]", "width": 9, "align": ">", "format": ".2f"},
         {"key": "hypervisor_write_io_bandwidth_mBps",
-            "header": "hWB/W[MB]", "width": 8, "align": ">", "format": ".2f"},
+            "header": "hWB/W[MB]", "width": 9, "align": ">", "format": ".2f"},
 
         {"key": "controller_io_bandwidth_mBps",
-            "header": "cB/W[MB]", "width": 8, "align": ">", "format": ".2f"},
+            "header": "cB/W[MB]", "width": 9, "align": ">", "format": ".2f"},
         {"key": "controller_read_io_bandwidth_mBps",
-            "header": "cRB/W[MB]", "width": 8, "align": ">", "format": ".2f"},
+            "header": "cRB/W[MB]", "width": 9, "align": ">", "format": ".2f"},
         {"key": "controller_write_io_bandwidth_mBps",
-            "header": "cWB/W[MB]", "width": 8, "align": ">", "format": ".2f"},
+            "header": "cWB/W[MB]", "width": 9, "align": ">", "format": ".2f"},
 
         {"key": "io_bandwidth_mBps",
-            "header": "B/W[MB]", "width": 8, "align": ">", "format": ".2f"},
+            "header": "B/W[MB]", "width": 9, "align": ">", "format": ".2f"},
         {"key": "read_io_bandwidth_mBps",
-            "header": "RB/W[MB]", "width": 8, "align": ">", "format": ".2f"},
+            "header": "RB/W[MB]", "width": 9, "align": ">", "format": ".2f"},
         {"key": "write_io_bandwidth_mBps",
-            "header": "WB/W[MB]", "width": 8, "align": ">", "format": ".2f"},
+            "header": "WB/W[MB]", "width": 9, "align": ">", "format": ".2f"},
     ]
 )
 
@@ -881,13 +887,7 @@ class NodeReporter(Reporter):
         """
         Return a sorted dictionary with live nodes bandwidth stats.
         """
-        entity_list = self._get_node_live_stats(
-            field_name_list=NODES_BANDWIDTH_REPORT_ARITHMOS_FIELDS,
-            filter_criteria="")
-        ret = self._get_live_stats_dic(entity_list,
-                                       NODES_BANDWIDTH_REPORT_ARITHMOS_FIELDS)
-        ret = self._stats_unit_conversion(ret)
-        return self._sort_entity_dict(ret, sort)
+        return self._live_report(NODES_BANDWIDTH_REPORT_ARITHMOS_FIELDS, sort)
 
     def lat_live_report(self, sort="name"):
         """
