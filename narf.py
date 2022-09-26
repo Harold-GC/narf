@@ -905,6 +905,11 @@ class NodeReporter(Reporter):
         return self._time_range_report(NODES_OVERALL_REPORT_ARITHMOS_FIELDS,
                                        start, end, sort)
 
+    def controller_time_range_report(self, start, end, sort="name", nodes=[]):
+        """Return dictionary with time range nodes controller stats."""
+        return self._time_range_report(NODES_CONTROLLER_REPORT_ARITHMOS_FIELDS,
+                                       start, end, sort)
+
     def iops_time_range_report(self, start, end, sort="name", nodes=[]):
         """Return dictionary with time range node IOPS stats."""
         return self._time_range_report(NODES_IOPS_REPORT_ARITHMOS_FIELDS,
@@ -1383,6 +1388,14 @@ class UiCli(Ui):
                         usec_step, usec_delta, sort)
                     self._report_format_printer(
                         NODES_OVERALL_REPORT_CLI_FIELDS,
+                        entity_list,
+                        step_time.strftime("%Y/%m/%d-%H:%M:%S")
+                    )
+                elif report_type == "controller":
+                    entity_list = self.node_reporter.controller_time_range_report(
+                        usec_step, usec_delta, sort)
+                    self._report_format_printer(
+                        NODES_CONTROLLER_REPORT_CLI_FIELDS,
                         entity_list,
                         step_time.strftime("%Y/%m/%d-%H:%M:%S")
                     )
