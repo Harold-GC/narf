@@ -828,15 +828,7 @@ class NodeReporter(Reporter):
         return ret
 
     def _live_report(self, field_list, sort="name"):
-        """Return dictionary with node live stats.
-        Args:
-            field_list (list): List of valid kNode arithmos stats.
-            sort (str): Criteria for sort entities.
-
-        Return:
-            Dictionary with Node entities and live stats as
-            specified by the field_list
-        """
+        """Return dictionary with node live stats."""
         # Get nodes and stats in arithmos proto format
         entity_list = self._get_node_live_stats(
             field_name_list=field_list,
@@ -853,41 +845,15 @@ class NodeReporter(Reporter):
         return self._sort_entity_dict(ret, sort)
 
     def overall_live_report(self, sort="name"):
-        """Return dictionary with nodes overall stats.
-
-        Args:
-            field_list (list): List of valid kNode arithmos stats.
-            sort (str): Criteria for sort entities.
-
-        Return:
-            Dictionary with Node entities and live stats as
-            specified by the field_list
-        """
+        """Return dictionary with nodes overall stats."""
         return self._live_report(NODES_OVERALL_REPORT_ARITHMOS_FIELDS, sort)
 
     def controller_live_report(self, sort="name"):
-        """Return dictionary with nodes overall stats.
-
-        Args:
-            field_list (list): List of valid kNode arithmos stats.
-            sort (str): Criteria for sort entities.
-
-        Return:
-            Dictionary with Node entities and live stats as
-            specified by the field_list
-        """
+        """Return dictionary with nodes overall stats."""
         return self._live_report(NODES_CONTROLLER_REPORT_ARITHMOS_FIELDS, sort)
 
     def iops_live_report(self, sort="name"):
-        """Return a sorted dictionary with live nodes IOPS stats.
-
-        Args:
-            sort (str): Criteria for sort entities.
-
-        Return:
-            Dictionary with Node entities and live stats as
-            specified by the field_list
-        """
+        """Return a sorted dictionary with live nodes IOPS stats."""
         return self._live_report(NODES_IOPS_REPORT_ARITHMOS_FIELDS, sort)
 
     def bw_live_report(self, sort="name"):
