@@ -744,9 +744,10 @@ class ClusterReporter(Reporter):
 
 
 class NodeReporter(Reporter):
-    """Reports for Nodes"""
+    """Reports for Nodes."""
 
     def __init__(self):
+        """Class constructor."""
         Reporter.__init__(self)
         self._ARITHMOS_ENTITY_PROTO = ArithmosEntityProto.kNode
         self.max_node_name_width = 0
@@ -761,10 +762,12 @@ class NodeReporter(Reporter):
         }
 
         self.nodes = self._get_node_live_stats(sort_criteria="node_name",
-                                               field_name_list=["node_name", "id"])
+                                               field_name_list=["node_name",
+                                                                "id"])
 
     def _get_node_live_stats(self, sort_criteria=None, filter_criteria=None,
                              search_term=None, field_name_list=None):
+        """Return node stats in arithmos proto."""
         response = self._get_live_stats(self._ARITHMOS_ENTITY_PROTO,
                                         sort_criteria, filter_criteria,
                                         search_term, field_name_list)
@@ -772,10 +775,7 @@ class NodeReporter(Reporter):
         return entity_list
 
     def _get_live_stats_dic(self, entity_list, field_list):
-        """
-        Get an entity_list as returned from MasterGetEntitiesStats,
-        parse the entities and stats to a dictinary an returns.
-        """
+        """Return dictionary with node live stats."""
         node_stats_dic = []
         for node_entity in entity_list:
             node_dict = self._get_entity_stats_from_proto(
@@ -786,7 +786,7 @@ class NodeReporter(Reporter):
         return node_stats_dic
 
     def _get_cvm_live_stats(self, node_id, field_list=[]):
-        """Return CVM stats."""
+        """Return CVM live stats."""
         vm_reporter = VmReporter()
         filter_criteria = "node_id==" + node_id + ";is_cvm==1"
 
@@ -809,7 +809,7 @@ class NodeReporter(Reporter):
         return ret
 
     def _live_report(self, field_list, sort="name"):
-        """Return dictionary with node live stats."""
+        """Return dictionary with node and CVM live stats."""
         # Get nodes and stats in arithmos proto format
         entity_list = self._get_node_live_stats(
             field_name_list=field_list,
@@ -834,26 +834,20 @@ class NodeReporter(Reporter):
         return self._live_report(NODES_CONTROLLER_REPORT_ARITHMOS_FIELDS, sort)
 
     def iops_live_report(self, sort="name"):
-        """Return a sorted dictionary with live nodes IOPS stats."""
+        """Return dictionary with live nodes IOPS stats."""
         return self._live_report(NODES_IOPS_REPORT_ARITHMOS_FIELDS, sort)
 
     def bw_live_report(self, sort="name"):
-        """
-        Return a sorted dictionary with live nodes bandwidth stats.
-        """
+        """Return dictionary with live nodes bandwidth stats."""
         return self._live_report(NODES_BANDWIDTH_REPORT_ARITHMOS_FIELDS, sort)
 
     def lat_live_report(self, sort="name"):
-        """
-        Returns a sorted dictionary with live nodes bandwidth stats.
-        """
+        """Return dictionary with live nodes bandwidth stats."""
         return self._live_report(NODES_LATENCY_REPORT_ARITHMOS_FIELDS, sort)
 
-    def _get_time_range_stats_dic(self, field_list, start, end, sampling_interval=30):
-        """
-        Get a list of fields (stats), a time frame specified by start and end,
-        the desired interval and collects from arithmos the average values.
-        """
+    def _get_time_range_stats_dic(self, field_list,
+                                  start, end, sampling_interval=30):
+        """Return dictionary with node time range stats."""
         nodes_stats_dic = []
         for node_pivot in self.nodes:
             node = {}
@@ -894,7 +888,7 @@ class NodeReporter(Reporter):
         return ret
 
     def _time_range_report(self, field_list, start, end, sort="name"):
-        """Return dictionary with node live stats."""
+        """Return dictionary with node and CVM time range stats."""
         # Get nodes and stats in arithmos proto format
         entity_list = self._get_time_range_stats_dic(field_list, start, end)
 
@@ -907,28 +901,22 @@ class NodeReporter(Reporter):
         return self._sort_entity_dict(ret, sort)
 
     def overall_time_range_report(self, start, end, sort="name", nodes=[]):
-        """Returns dictionary with time range nodes overall stats."""
+        """Return dictionary with time range nodes overall stats."""
         return self._time_range_report(NODES_OVERALL_REPORT_ARITHMOS_FIELDS,
                                        start, end, sort)
 
     def iops_time_range_report(self, start, end, sort="name", nodes=[]):
-        """
-        Returns a sorted dictionary with time range node IOPS stats.
-        """
+        """Return dictionary with time range node IOPS stats."""
         return self._time_range_report(NODES_IOPS_REPORT_ARITHMOS_FIELDS,
                                        start, end, sort)
 
     def bw_time_range_report(self, start, end, sort="name", nodes=[]):
-        """
-        Returns a sorted dictionary with time range nodes bandwidth stats.
-        """
+        """Return dictionary with time range nodes bandwidth stats."""
         return self._time_range_report(NODES_BANDWIDTH_REPORT_ARITHMOS_FIELDS,
                                        start, end, sort)
 
     def lat_time_range_report(self, start, end, sort="name", nodes=[]):
-        """
-        Returns a sorted dictionary with time range nodes bandwidth stats.
-        """
+        """Return dictionary with time range nodes bandwidth stats."""
         return self._time_range_report(NODES_LATENCY_REPORT_ARITHMOS_FIELDS,
                                        start, end, sort)
 
