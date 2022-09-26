@@ -321,10 +321,17 @@ NODES_LATENCY_REPORT_CLI_FIELDS = (
     [
         {"key": "node_name", "header": "Node",
             "width": 20, "align": "<", "format": ".20"},
-        {"key": "hypervisor_cpu_usage_percent", "header": "CPU%",
+        {"key": "hypervisor_cpu_usage_percent", "header": "hCPU%",
             "width": 6, "align": ">", "format": ".2f"},
-        {"key": "hypervisor_memory_usage_percent", "header": "MEM%",
+        {"key": "hypervisor_memory_usage_percent", "header": "hMEM%",
             "width": 6, "align": ">", "format": ".2f"},
+        {"key": "cvm_hypervisor_cpu_usage_percent", "header": "cCPU%",
+            "width": 6, "align": ">", "format": ".2f"},
+        {"key": "cvm_hypervisor.cpu_ready_time_percent", "header": "cRDY%",
+            "width": 6, "align": ">", "format": ".2f"},
+        {"key": "cvm_memory_usage_percent", "header": "cMEM%",
+            "width": 6, "align": ">", "format": ".2f"},
+
         {"key": "hypervisor_avg_io_latency_msecs",
             "header": "hLAT[ms]", "width": 9, "align": ">", "format": ".2f"},
         {"key": "hypervisor_avg_read_io_latency_msecs",
@@ -893,13 +900,7 @@ class NodeReporter(Reporter):
         """
         Returns a sorted dictionary with live nodes bandwidth stats.
         """
-        entity_list = self._get_node_live_stats(
-            field_name_list=NODES_LATENCY_REPORT_ARITHMOS_FIELDS,
-            filter_criteria="")
-        ret = self._get_live_stats_dic(entity_list,
-                                       NODES_LATENCY_REPORT_ARITHMOS_FIELDS)
-        ret = self._stats_unit_conversion(ret)
-        return self._sort_entity_dict(ret, sort)
+        return self._live_report(NODES_LATENCY_REPORT_ARITHMOS_FIELDS, sort)
 
     def overall_time_range_report(self, start, end, sort="name", nodes=[]):
         """
