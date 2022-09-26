@@ -105,15 +105,15 @@ NODES_OVERALL_REPORT_CLI_FIELDS = (
     [
         {"key": "node_name", "header": "Node",
             "width": 20, "align": "<", "format": ".20"},
-        {"key": "hypervisor_cpu_usage_percent", "header": "hypCPU%",
+        {"key": "hypervisor_cpu_usage_percent", "header": "hCPU%",
             "width": 8, "align": ">", "format": ".2f"},
-        {"key": "hypervisor_memory_usage_percent", "header": "hypMEM%",
+        {"key": "hypervisor_memory_usage_percent", "header": "hMEM%",
             "width": 8, "align": ">", "format": ".2f"},
-        {"key": "cvm_hypervisor_cpu_usage_percent", "header": "cvmCPU%",
+        {"key": "cvm_hypervisor_cpu_usage_percent", "header": "cCPU%",
             "width": 8, "align": ">", "format": ".2f"},
-        {"key": "cvm_hypervisor.cpu_ready_time_percent", "header": "cvmMEM%",
+        {"key": "cvm_hypervisor.cpu_ready_time_percent", "header": "cRDY%",
             "width": 8, "align": ">", "format": ".2f"},
-        {"key": "cvm_memory_usage_percent", "header": "cvmRDY%",
+        {"key": "cvm_memory_usage_percent", "header": "cMEM%",
             "width": 8, "align": ">", "format": ".2f"},
         {"key": "hypervisor_num_iops", "header": "hIOPS",
             "width": 8, "align": ">", "format": ".2f"},
@@ -125,6 +125,65 @@ NODES_OVERALL_REPORT_CLI_FIELDS = (
             "header": "bB/W[MB]", "width": 8, "align": ">", "format": ".2f"},
         {"key": "avg_io_latency_msecs",
             "header": "bLAT[ms]", "width": 8, "align": ">", "format": ".2f"}
+    ]
+)
+
+NODES_CONTROLLER_REPORT_ARITHMOS_FIELDS = (
+    [
+        "node_name", "id",
+        "hypervisor_cpu_usage_ppm",
+        "hypervisor_memory_usage_ppm",
+
+        "controller_num_iops",
+        "controller_num_read_iops",
+        "controller_num_write_iops",
+
+        "controller_io_bandwidth_kBps",
+        "controller_read_io_bandwidth_kBps",
+        "controller_write_io_bandwidth_kBps",
+
+        "controller_avg_io_latency_usecs",
+        "controller_avg_read_io_latency_usecs",
+        "controller_avg_write_io_latency_usecs"
+
+    ]
+)
+
+NODES_CONTROLLER_REPORT_CLI_FIELDS = (
+    [
+        {"key": "node_name", "header": "Node",
+            "width": 20, "align": "<", "format": ".20"},
+        {"key": "hypervisor_cpu_usage_percent", "header": "hCPU%",
+            "width": 8, "align": ">", "format": ".2f"},
+        {"key": "hypervisor_memory_usage_percent", "header": "hMEM%",
+            "width": 8, "align": ">", "format": ".2f"},
+        {"key": "cvm_hypervisor_cpu_usage_percent", "header": "cCPU%",
+            "width": 8, "align": ">", "format": ".2f"},
+        {"key": "cvm_hypervisor.cpu_ready_time_percent", "header": "cRDY%",
+            "width": 8, "align": ">", "format": ".2f"},
+        {"key": "cvm_memory_usage_percent", "header": "cMEM%",
+            "width": 8, "align": ">", "format": ".2f"},
+
+        {"key": "controller_num_iops", "header": "cIOPS",
+            "width": 8, "align": ">", "format": ".2f"},
+        {"key": "controller_num_read_iops", "header": "cRIOPS",
+            "width": 8, "align": ">", "format": ".2f"},
+        {"key": "controller_num_write_iops", "header": "cWIOPS",
+            "width": 8, "align": ">", "format": ".2f"},
+
+        {"key": "controller_io_bandwidth_mBps",
+            "header": "cB/W[MB]", "width": 9, "align": ">", "format": ".2f"},
+        {"key": "controller_read_io_bandwidth_mBps",
+            "header": "cRB/W[MB]", "width": 9, "align": ">", "format": ".2f"},
+        {"key": "controller_write_io_bandwidth_mBps",
+            "header": "cWB/W[MB]", "width": 9, "align": ">", "format": ".2f"},
+
+        {"key": "controller_avg_io_latency_msecs",
+            "header": "cLAT[ms]", "width": 9, "align": ">", "format": ".2f"},
+        {"key": "controller_avg_read_io_latency_msecs",
+            "header": "cRLAT[ms]", "width": 9, "align": ">", "format": ".2f"},
+        {"key": "controller_avg_write_io_latency_msecs",
+            "header": "cWLAT[ms]", "width": 9, "align": ">", "format": ".2f"}
     ]
 )
 
@@ -154,9 +213,9 @@ NODES_IOPS_REPORT_CLI_FIELDS = (
             "width": 6, "align": ">", "format": ".2f"},
         {"key": "cvm_hypervisor_cpu_usage_percent", "header": "cCPU%",
             "width": 6, "align": ">", "format": ".2f"},
-        {"key": "cvm_hypervisor.cpu_ready_time_percent", "header": "cMEM%",
+        {"key": "cvm_hypervisor.cpu_ready_time_percent", "header": "cRDY%",
             "width": 6, "align": ">", "format": ".2f"},
-        {"key": "cvm_memory_usage_percent", "header": "cRDY%",
+        {"key": "cvm_memory_usage_percent", "header": "cMEM%",
             "width": 6, "align": ">", "format": ".2f"},
 
 
@@ -781,7 +840,8 @@ class NodeReporter(Reporter):
         return self._sort_entity_dict(ret, sort)
 
     def overall_live_report(self, sort="name"):
-        """Returns dictionary with nodes overall stats.
+        """Return dictionary with nodes overall stats.
+
         Args:
             field_list (list): List of valid kNode arithmos stats.
             sort (str): Criteria for sort entities.
@@ -792,8 +852,22 @@ class NodeReporter(Reporter):
         """
         return self._live_report(NODES_OVERALL_REPORT_ARITHMOS_FIELDS, sort)
 
+    def controller_live_report(self, sort="name"):
+        """Return dictionary with nodes overall stats.
+
+        Args:
+            field_list (list): List of valid kNode arithmos stats.
+            sort (str): Criteria for sort entities.
+
+        Return:
+            Dictionary with Node entities and live stats as
+            specified by the field_list
+        """
+        return self._live_report(NODES_CONTROLLER_REPORT_ARITHMOS_FIELDS, sort)
+
     def iops_live_report(self, sort="name"):
-        """Returns a sorted dictionary with live nodes IOPS stats.
+        """Return a sorted dictionary with live nodes IOPS stats.
+
         Args:
             sort (str): Criteria for sort entities.
 
@@ -805,7 +879,7 @@ class NodeReporter(Reporter):
 
     def bw_live_report(self, sort="name"):
         """
-        Returns a sorted dictionary with live nodes bandwidth stats.
+        Return a sorted dictionary with live nodes bandwidth stats.
         """
         entity_list = self._get_node_live_stats(
             field_name_list=NODES_BANDWIDTH_REPORT_ARITHMOS_FIELDS,
@@ -1040,6 +1114,9 @@ class VmReporter(Reporter):
         return self._live_report(VM_IOPS_REPORT_ARITHMOS_FIELDS,
                                  sort, node_names, node_ids)
 
+    def _time_range_report(self, start, end, field_list, sort="name", node_names=[]):
+        pass
+
     def overall_time_range_report(self, start, end, sort="name", node_names=[]):
         sort_by_arithmos = self._get_arithmos_sort_field(sort)
         filter_by = self._get_arithmos_filter_criteria_string(
@@ -1272,6 +1349,10 @@ class UiCli(Ui):
                 entity_list = self.node_reporter.overall_live_report(sort)
                 self._report_format_printer(
                     NODES_OVERALL_REPORT_CLI_FIELDS, entity_list, time_now)
+            elif report_type == "controller":
+                entity_list = self.node_reporter.controller_live_report(sort)
+                self._report_format_printer(
+                    NODES_CONTROLLER_REPORT_CLI_FIELDS, entity_list, time_now)
             elif report_type == "iops":
                 entity_list = self.node_reporter.iops_live_report(sort)
                 self._report_format_printer(
@@ -1493,7 +1574,7 @@ class UiInteractive(Ui):
         self.vg_sort = "name"
         self.nodes_pad = "cpu"
         self.entities_pad_to_display = "vm"
-        self.help_pad_to_display = "none"
+        self.help_pad_to_display = "widget"
         self.nodes = []
         self.active_node = None
         self.height = 0
@@ -1544,6 +1625,9 @@ class UiInteractive(Ui):
             and pad_min_x with 0 value. Other values may make this
             function to crash.
         """
+        if screen_x > self.width:
+            return False
+
         main_screen_max_absolute_y = screen_y + pad_desired_height
         main_screen_max_absolute_x = screen_x + pad_desired_width
 
@@ -2056,7 +2140,7 @@ if __name__ == "__main__":
                                      "iops", "bw", "lat", "vdisks"],
                             default="name", help="Sort output")
         parser.add_argument('--report-type', '-t',
-                            choices=["iops", "bw", "lat"],
+                            choices=["controller", "iops", "bw", "lat"],
                             default="overall", help="Report type")
         parser.add_argument("-start-time", "-S",
                             help="Start time in format YYYY/MM/DD-hh:mm:ss. "
