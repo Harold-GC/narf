@@ -814,7 +814,7 @@ class NodeReporter(Reporter):
         ret = vm_reporter._get_live_stats_dic(ret, field_list)
         return ret[0]
 
-    def _inject_cvm_stats(self, nodes):
+    def _inject_cvm_live_stats(self, nodes):
         """Inject CVM stats into nodes dictionary."""
         ret = []
         for node in nodes:
@@ -838,7 +838,7 @@ class NodeReporter(Reporter):
         ret = self._get_live_stats_dic(entity_list, field_list)
 
         # Add CVMs stats into node list
-        ret = self._inject_cvm_stats(ret)
+        ret = self._inject_cvm_live_stats(ret)
 
         # Do unit conversion
         ret = self._stats_unit_conversion(ret)
