@@ -804,7 +804,7 @@ class NodeReporter(Reporter):
             nodes_stats_dic.append(node)
         return nodes_stats_dic
 
-    def _get_cvm_stats(self, node_id, field_list=[]):
+    def _get_cvm_live_stats(self, node_id, field_list=[]):
         """Return CVM stats."""
         vm_reporter = VmReporter()
         filter_criteria = "node_id==" + node_id + ";is_cvm==1"
@@ -818,7 +818,7 @@ class NodeReporter(Reporter):
         """Inject CVM stats into nodes dictionary."""
         ret = []
         for node in nodes:
-            cvm = self._get_cvm_stats(
+            cvm = self._get_cvm_live_stats(
                 node["id"], field_list=NODES_CVM_REPORTS_ATRITHMOS_FIELDS)
 
             for cvm_stat in NODES_CVM_REPORTS_ATRITHMOS_FIELDS:
